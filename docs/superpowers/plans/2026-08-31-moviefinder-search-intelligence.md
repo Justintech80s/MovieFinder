@@ -6,8 +6,8 @@
 - Person/director intent parsing tests verified locally: 5/5 passing.
 - Production Vercel deployment remains READY and untouched.
 - Production `/api/search` runtime check shows no current fatal application error; only Node's `url.parse()` deprecation warning is recurring.
-- Vercel project is not currently auto-creating a preview deployment from the GitHub feature branch.
-- Next deployment gate: link/import `Justintech80s/MovieFinder` to the existing `getmoviefinder` Vercel project (or otherwise enable Git preview deployments), then deploy this feature branch as preview and run acceptance tests before merge/promotion.
+- Vercel Git connection has now been confirmed by the user for `Justintech80s/MovieFinder`.
+- This commit intentionally triggers a fresh Vercel Preview deployment from `feature/search-brain-v2` so acceptance testing can begin before any production promotion.
 
 ## Goal
 
