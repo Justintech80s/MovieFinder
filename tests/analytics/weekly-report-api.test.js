@@ -41,9 +41,9 @@ const env={CRON_SECRET:'cron-secret',ANALYTICS_REPORT_TO:'owner@example.com',ANA
 
 test('weekly report endpoint rejects missing or incorrect cron authorization', async () => {
   const handler=createWeeklyReportHandler({store:fakeStore(),sendEmail:async()=>({id:'x'}),now:()=>new Date('2026-09-07T12:00:00Z'),env,logger:{warn:()=>{}}});
-  for(const auth of [undefined,'Bearer wrong']){
+  for(const request of [{headers:{}},req('Bearer wrong')]){
     const res=responseRecorder();
-    await handler(req(auth),res);
+    await handler(request,res);
     assert.equal(res.statusCode,401);
   }
 });
