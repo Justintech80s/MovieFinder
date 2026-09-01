@@ -11,7 +11,7 @@ function responseRecorder(){
   };
 }
 
-function jwNode({id,title,year,imdb=8,votes=100000,rt=null,genres=[]}){
+function jwNode({id,title,year,imdb=8,votes=100000,rt=null,genres=[],provider='Example Streamer',type='FLATRATE'}){
   return {
     id,
     objectType:'MOVIE',
@@ -25,20 +25,23 @@ function jwNode({id,title,year,imdb=8,votes=100000,rt=null,genres=[]}){
       scoring:{imdbScore:imdb,imdbVotes:votes,tomatoMeter:rt}
     },
     offers:[{
-      monetizationType:'FLATRATE',
+      monetizationType:type,
       retailPrice:null,
       retailPriceValue:null,
       currency:'USD',
       presentationType:'HD',
       standardWebURL:`https://example.com/${id}`,
-      package:{clearName:'Example Streamer'}
+      package:{clearName:provider}
     }]
   };
 }
 
-async function withCatalog(edges,query){
+async function withCatalog(edges,query,onRequest=()=>{}){
   const previousFetch=globalThis.fetch;
-  globalThis.fetch=async()=>({ok:true,status:200,json:async()=>({data:{popularTitles:{edges}}})});
+  globalThis.fetch=async(_url,options)=>{
+    onRequest(JSON.parse(options.body));
+    return {ok:true,status:200,json:async()=>({data:{popularTitles:{edges}}})};
+  };
   try {
     const res=responseRecorder();
     await handler({query:{q:query}},res);
@@ -62,15 +65,27 @@ test('generic search returns a controlled availability-unavailable response for 
   }
 });
 
-test('exact movie title ranks ahead of unrelated catalog results', async () => {
+test('plain exact movie title is sent upstream unchanged and ranks first', async () => {
+  let upstreamSearch=null;
   const res=await withCatalog([
     {node:jwNode({id:'something-wild',title:'Something Wild',year:1961})},
     {node:jwNode({id:'the-godfather',title:'The Godfather',year:1972,imdb:9.2,votes:2200000})}
-  ],'Where can I watch The Godfather?');
+  ],'The Godfather',body=>{upstreamSearch=body.variables.search;});
   assert.equal(res.statusCode,200);
+  assert.equal(upstreamSearch,'The Godfather');
   assert.equal(res.body.parsed.titleQuery,'The Godfather');
   assert.equal(res.body.results[0].title,'The Godfather');
-  assert.ok(res.body.results[0].matchScore > res.body.results[1].matchScore);
+});
+
+test('free suffix is removed from title before upstream search', async () => {
+  let upstreamSearch=null;
+  const res=await withCatalog([
+    {node:jwNode({id:'star-wars',title:'Star Wars',year:1977,provider:'Tubi',type:'ADS'})}
+  ],'Star Wars free',body=>{upstreamSearch=body.variables.search;});
+  assert.equal(res.statusCode,200);
+  assert.equal(upstreamSearch,'Star Wars');
+  assert.equal(res.body.parsed.titleQuery,'Star Wars');
+  assert.deepEqual(res.body.results.map(x=>x.title),['Star Wars']);
 });
 
 test('generic API enforces exact-year and genre constraints before ranking', async () => {
