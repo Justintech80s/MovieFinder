@@ -6,7 +6,7 @@ import { rankResults } from '../lib/search/rank.js';
 import { runPersonFilmographySearch } from '../lib/search/person-search.js';
 
 const JW='https://apis.justwatch.com/graphql';
-export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$language:Language!,$first:Int!,$search:String!){popularTitles(country:$country,first:$first,filter:{searchQuery:$search}){edges{node{id objectType content(country:$country,language:$language){title shortDescription originalReleaseYear fullPath posterUrl scoring{imdbScore imdbVotes tomatoMeter}} offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName}}}}}}}`;
+export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$language:Language!,$first:Int!,$search:String!){popularTitles(country:$country,first:$first,filter:{searchQuery:$search}){edges{node{id objectType content(country:$country,language:$language){title shortDescription originalReleaseYear fullPath posterUrl scoring{imdbScore imdbVotes tomatoMeter}} offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName}}}}}}`;
 
 async function jwSearch(search,first=60){
   const r=await fetch(JW,{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({query:JUSTWATCH_QUERY,variables:{country:'US',language:'en',first,search}})});
