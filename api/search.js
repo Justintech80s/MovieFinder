@@ -8,6 +8,7 @@ import { matchesHardConstraints } from '../lib/search/constraints.js';
 import { resolveAnalyticsIdentity } from '../lib/analytics/identity.js';
 import { createAnalyticsStore } from '../lib/analytics/store.js';
 import { buildSearchEvent, recordEventBestEffort } from '../lib/analytics/events.js';
+import { trackMovieOfferUrls } from '../lib/analytics/outbound.js';
 
 const JW='https://apis.justwatch.com/graphql';
 export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$language:Language!,$first:Int!,$search:String!){popularTitles(country:$country,first:$first,filter:{searchQuery:$search}){edges{node{id objectType content(country:$country,language:$language){title shortDescription originalReleaseYear fullPath posterUrl genres{shortName} scoring{imdbScore imdbVotes tomatoMeter}} offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName}}}}}}`;
@@ -65,6 +66,7 @@ function availabilityFailure(error){return /^availability source\b/i.test(String
 export function createSearchHandler({
   analyticsStore=createAnalyticsStore(),
   analyticsSecret=process.env.ANALYTICS_ID_SECRET,
+  outboundSecret=process.env.OUTBOUND_LINK_SECRET,
   now=()=>new Date(),
   logger=console
 }={}){
@@ -77,6 +79,12 @@ export function createSearchHandler({
       if(!identity) return false;
       const event=buildSearchEvent({type,query:q,parsed:parsed||{},resultCount,errorCode,identity,occurredAt:now()});
       return recordEventBestEffort({store:analyticsStore,event,logger});
+    }
+
+    function trackedResults(results){
+      if(!outboundSecret) return results;
+      const linkNow=now().getTime();
+      return results.map(movie=>trackMovieOfferUrls(movie,outboundSecret,{nowMs:linkNow}));
     }
 
     try{
@@ -94,7 +102,7 @@ export function createSearchHandler({
         }
         const resultCount=personSearch.results.length;
         await record(resultCount?'search_completed':'search_no_results',resultCount);
-        return res.status(200).json({parsed:{...parsed,person:personSearch.person},filmography:personSearch.filmography,results:personSearch.results,availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed'}});
+        return res.status(200).json({parsed:{...parsed,person:personSearch.person},filmography:personSearch.filmography,results:trackedResults(personSearch.results),availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed'}});
       }
 
       const title=catalogTitle(q);
@@ -110,7 +118,7 @@ export function createSearchHandler({
       results=results.filter(movie=>matchesHardConstraints(movie,parsed));
       results=rankResults(results,parsed).slice(0,40);
       await record(results.length?'search_completed':'search_no_results',results.length);
-      return res.status(200).json({parsed,results,liveAt:new Date().toISOString()});
+      return res.status(200).json({parsed,results:trackedResults(results),liveAt:new Date().toISOString()});
     }catch(error){
       const availabilityDown=availabilityFailure(error);
       await record('search_failed',0,availabilityDown?'availability_unavailable':'search_internal_error');
