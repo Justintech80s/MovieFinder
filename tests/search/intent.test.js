@@ -34,3 +34,31 @@ test('does not mistake a normal movie title query for a person', () => {
   const p = parseIntent('Where can I watch The Godfather?');
   assert.notEqual(p.kind, 'person-filmography');
 });
+
+test('detects producer filmography search', () => {
+  const p = parseIntent('movies produced by Jerry Bruckheimer');
+  assert.equal(p.kind, 'person-filmography');
+  assert.equal(p.personName, 'Jerry Bruckheimer');
+  assert.equal(p.role, 'producer');
+  assert.equal(p.filmographyView, 'complete');
+});
+
+test('detects all credits and complete view', () => {
+  const p = parseIntent('all credits for Clint Eastwood');
+  assert.equal(p.kind, 'person-filmography');
+  assert.equal(p.personName, 'Clint Eastwood');
+  assert.equal(p.role, 'all');
+  assert.equal(p.filmographyView, 'complete');
+});
+
+test('streaming wording selects available view', () => {
+  const p = parseIntent('All Denzel Washington films available on streaming');
+  assert.equal(p.filmographyView, 'available');
+});
+
+test('plain filmography wording selects complete view', () => {
+  const p = parseIntent('Quentin Tarantino filmography');
+  assert.equal(p.kind, 'person-filmography');
+  assert.equal(p.personName, 'Quentin Tarantino');
+  assert.equal(p.filmographyView, 'complete');
+});
