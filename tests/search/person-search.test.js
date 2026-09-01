@@ -25,17 +25,23 @@ test('person search preserves every credit when availability lookup fails for on
   assert.equal(result.availabilitySummary.unknown,1);
 });
 
-test('complete person search returns credits even without current offers', async () => {
-  const intent={personName:'Example Person',role:'director',filmographyView:'complete'};
+test('complete person search returns credits without performing availability fan-out', async () => {
+  const intent={personName:'Quentin Tarantino',role:'director',filmographyView:'complete'};
   const resolveCredits=async()=>({
-    person:{id:'Q10',name:'Example Person',source:'Wikidata'},
-    credits:[{workId:'Q1',title:'Film A',year:1994,role:'director'}],
+    person:{id:'Q3772',name:'Quentin Tarantino',source:'Wikidata'},
+    credits:[
+      {workId:'Q1',title:'Pulp Fiction',year:1994,role:'director'},
+      {workId:'Q2',title:'Jackie Brown',year:1997,role:'director'}
+    ],
     verified:true
   });
+  let availabilityCalls=0;
+  const lookupAvailability=async()=>{ availabilityCalls+=1; return null; };
 
-  const result=await runPersonFilmographySearch(intent,{resolveCredits,lookupAvailability:async()=>null,rank:items=>items,availabilityLimit:10});
+  const result=await runPersonFilmographySearch(intent,{resolveCredits,lookupAvailability,rank:items=>items,availabilityLimit:60});
 
-  assert.equal(result.filmography.length,1);
-  assert.equal(result.results.length,1);
-  assert.equal(result.filmography[0].availabilityStatus,'UNAVAILABLE');
+  assert.equal(availabilityCalls,0);
+  assert.equal(result.filmography.length,2);
+  assert.equal(result.results.length,2);
+  assert.ok(result.filmography.every(x=>x.availabilityStatus==='UNKNOWN'));
 });
