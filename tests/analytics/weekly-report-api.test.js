@@ -15,7 +15,7 @@ function req(auth='Bearer cron-secret'){
 }
 
 function fakeStore({existing=null,failSet=false}={}){
-  const calls={runs:[],lists:[],prior:[],cleanup:[]};
+  const calls={runs:[],lists:[],prior:[],cleanup:[],reportCleanup:[]};
   const currentEvents=[
     {event_type:'search_completed',visitor_key:'v1',session_key:'s1',query_text:'The Godfather',occurred_at:'2026-09-01T12:00:00Z',result_count:10},
     {event_type:'provider_click',visitor_key:'v1',session_key:'s1',movie_title:'The Godfather',provider:'Prime Video',monetization_type:'RENT',price:3.99,occurred_at:'2026-09-01T12:01:00Z'}
@@ -33,7 +33,8 @@ function fakeStore({existing=null,failSet=false}={}){
       return start.toISOString()==='2026-08-31T04:00:00.000Z'?currentEvents:comparisonEvents;
     },
     async listPriorVisitorKeys(keys,before){calls.prior.push({keys,before});return new Set(['v1']);},
-    async deleteEventsBefore(cutoff){calls.cleanup.push(cutoff);return true;}
+    async deleteEventsBefore(cutoff){calls.cleanup.push(cutoff);return true;},
+    async deleteReportRunsBefore(cutoff){calls.reportCleanup.push(cutoff);return true;}
   };
 }
 
@@ -48,7 +49,7 @@ test('weekly report endpoint rejects missing or incorrect cron authorization', a
   }
 });
 
-test('Monday 08:00 New York sends one real report, marks it sent, and cleans expired events', async () => {
+test('Monday 08:00 New York sends one real report, marks it sent, and enforces both retention windows', async () => {
   const store=fakeStore();
   const emails=[];
   const handler=createWeeklyReportHandler({store,sendEmail:async args=>{emails.push(args);return {id:'email_1'};},now:()=>new Date('2026-09-07T12:00:00Z'),env,logger:{warn:()=>{}}});
@@ -64,6 +65,8 @@ test('Monday 08:00 New York sends one real report, marks it sent, and cleans exp
   assert.equal(store.calls.runs.at(-1).status,'sent');
   assert.equal(store.calls.runs.at(-1).event_count,2);
   assert.equal(store.calls.cleanup.length,1);
+  assert.equal(store.calls.reportCleanup.length,1);
+  assert.equal(store.calls.reportCleanup[0],'2025-08-07');
 });
 
 test('Monday 09:00 New York may retry an unsent report', async () => {
