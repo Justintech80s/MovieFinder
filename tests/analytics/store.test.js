@@ -61,7 +61,7 @@ test('listEvents paginates until a short page', async () => {
   assert.match(seen[0].url,/occurred_at=lt\./);
 });
 
-test('report runs upsert idempotently and cleanup deletes old events', async () => {
+test('report runs upsert idempotently and retention cleanup removes old raw events and report runs', async () => {
   const seen=[];
   const store=createAnalyticsStore({
     env:{SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'service-key'},
@@ -72,8 +72,11 @@ test('report runs upsert idempotently and cleanup deletes old events', async () 
   });
   await store.setReportRun({week_start:'2026-08-31',week_end:'2026-09-07',generated_at:'2026-09-07T12:00:00Z',status:'processing',event_count:0});
   await store.deleteEventsBefore(new Date('2026-06-01T00:00:00Z'));
+  await store.deleteReportRunsBefore('2025-08-01');
   assert.equal(seen[0].init.method,'POST');
   assert.equal(seen[0].init.headers.Prefer,'resolution=merge-duplicates,return=minimal');
   assert.equal(seen[1].init.method,'DELETE');
   assert.match(seen[1].url,/analytics_events\?occurred_at=lt\./);
+  assert.equal(seen[2].init.method,'DELETE');
+  assert.match(seen[2].url,/analytics_report_runs\?week_start=lt\.2025-08-01/);
 });
