@@ -14,12 +14,12 @@ function responseRecorder(){
   };
 }
 
-function jwNode({id='movie-1',title='The Godfather',year=1972}){
+function jwNode({id='movie-1',title='The Godfather',year=1972,offerUrl=null}){
   return {
     id,
     objectType:'MOVIE',
     content:{title,shortDescription:'',originalReleaseYear:year,fullPath:`/us/movie/${id}`,posterUrl:null,genres:[],scoring:{imdbScore:9.2,imdbVotes:1000000,tomatoMeter:97}},
-    offers:[]
+    offers:offerUrl?[{monetizationType:'RENT',retailPrice:null,retailPriceValue:3.99,currency:'USD',presentationType:'HD',standardWebURL:offerUrl,package:{clearName:'Prime Video'}}]:[]
   };
 }
 
@@ -83,5 +83,16 @@ test('analytics write failure never changes a successful search response', async
     await handler(request('The Godfather'),res);
     assert.equal(res.statusCode,200);
     assert.equal(res.body.results[0].title,'The Godfather');
+  });
+});
+
+test('configured outbound secret replaces provider URL with signed MovieFinder redirect', async () => {
+  const handler=createSearchHandler({analyticsStore:{insertEvent:async()=>true},analyticsSecret:'test-secret',outboundSecret:'outbound-secret',now,logger:{warn:()=>{}}});
+  await withFetch(async()=>({ok:true,status:200,json:async()=>({data:{popularTitles:{edges:[{node:jwNode({offerUrl:'https://example.com/rent'})}]}}})}),async()=>{
+    const res=responseRecorder();
+    await handler(request('The Godfather'),res);
+    assert.equal(res.statusCode,200);
+    assert.match(res.body.results[0].offers[0].url,/^\/api\/out\?token=/);
+    assert.match(res.body.results[0].best.url,/^\/api\/out\?token=/);
   });
 });
