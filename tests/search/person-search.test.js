@@ -45,3 +45,31 @@ test('complete person search returns credits without performing availability fan
   assert.equal(result.results.length,2);
   assert.ok(result.filmography.every(x=>x.availabilityStatus==='UNKNOWN'));
 });
+
+test('person search merges the same movie across roles before availability lookup', async () => {
+  const intent={personName:'Quentin Tarantino',role:'all',filmographyView:'available'};
+  const resolveCredits=async()=>({
+    person:{id:'Q3772',name:'Quentin Tarantino',source:'Wikidata'},
+    credits:[
+      {workId:'Q1',title:'Pulp Fiction',year:1994,role:'cast'},
+      {workId:'Q1',title:'Pulp Fiction',year:1994,role:'director'},
+      {workId:'Q1',title:'Pulp Fiction',year:1994,role:'writer'},
+      {workId:'Q2',title:'Jackie Brown',year:1997,role:'director'}
+    ],
+    verified:true
+  });
+  const availabilityCalls=[];
+  const lookupAvailability=async credit=>{
+    availabilityCalls.push(credit.title);
+    return {id:`stream-${credit.workId}`,title:credit.title,year:credit.year,mediaType:'MOVIE',offers:[{provider:'Example',type:'FLATRATE',timeline:{status:'NOW'}}]};
+  };
+
+  const result=await runPersonFilmographySearch(intent,{resolveCredits,lookupAvailability,rank:items=>items,availabilityLimit:60});
+  const pulp=result.filmography.find(x=>x.title==='Pulp Fiction');
+
+  assert.equal(result.filmography.filter(x=>x.title==='Pulp Fiction').length,1);
+  assert.deepEqual(pulp.roles,['director','writer','cast']);
+  assert.equal(pulp.role,'director');
+  assert.equal(availabilityCalls.filter(title=>title==='Pulp Fiction').length,1);
+  assert.equal(availabilityCalls.length,2);
+});
