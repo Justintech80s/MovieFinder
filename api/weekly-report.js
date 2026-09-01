@@ -4,6 +4,7 @@ import { renderWeeklyEmail, sendWeeklyEmail } from '../lib/analytics/email.js';
 
 const REPORT_TIME_ZONE='America/New_York';
 const RAW_RETENTION_MS=90*24*60*60*1000;
+const REPORT_RUN_RETENTION_MONTHS=13;
 
 function localScheduleParts(date,timeZone=REPORT_TIME_ZONE){
   const formatter=new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn',{
@@ -11,6 +12,14 @@ function localScheduleParts(date,timeZone=REPORT_TIME_ZONE){
   });
   const parts=Object.fromEntries(formatter.formatToParts(date).filter(part=>part.type!=='literal').map(part=>[part.type,part.value]));
   return {weekday:parts.weekday,hour:Number(parts.hour)};
+}
+
+function monthsAgoDateKey(date,months){
+  const source=new Date(date);
+  const targetMonth=new Date(Date.UTC(source.getUTCFullYear(),source.getUTCMonth()-months,1));
+  const lastDay=new Date(Date.UTC(targetMonth.getUTCFullYear(),targetMonth.getUTCMonth()+1,0)).getUTCDate();
+  targetMonth.setUTCDate(Math.min(source.getUTCDate(),lastDay));
+  return targetMonth.toISOString().slice(0,10);
 }
 
 function cleanError(error){
@@ -84,7 +93,12 @@ export function createWeeklyReportHandler({
       try{
         await store.deleteEventsBefore(new Date(runNow.getTime()-RAW_RETENTION_MS));
       }catch(error){
-        logger?.warn?.('MovieFinder analytics cleanup failed',cleanError(error));
+        logger?.warn?.('MovieFinder raw analytics cleanup failed',cleanError(error));
+      }
+      try{
+        await store.deleteReportRunsBefore(monthsAgoDateKey(runNow,REPORT_RUN_RETENTION_MONTHS));
+      }catch(error){
+        logger?.warn?.('MovieFinder analytics report-run cleanup failed',cleanError(error));
       }
 
       return res.status(200).json({success:true,week_start:weekStart,week_end:weekEnd,event_count:currentEvents.length});
