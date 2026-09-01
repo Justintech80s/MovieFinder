@@ -24,6 +24,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install Python dependencies
+        run: python -m pip install -r python_search/requirements.txt
       - name: Run Python contract tests
         env:
           PYTHONPATH: python_search
