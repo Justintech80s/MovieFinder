@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/search-brain-v2
+      - feature/weekly-email-analytics
   pull_request:
     branches:
       - main
