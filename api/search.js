@@ -5,6 +5,9 @@ import { extractCinemaConcepts } from '../lib/search/cinema-graph.js';
 import { rankResults } from '../lib/search/rank.js';
 import { runPersonFilmographySearch } from '../lib/search/person-search.js';
 import { matchesHardConstraints } from '../lib/search/constraints.js';
+import { resolveAnalyticsIdentity } from '../lib/analytics/identity.js';
+import { createAnalyticsStore } from '../lib/analytics/store.js';
+import { buildSearchEvent, recordEventBestEffort } from '../lib/analytics/events.js';
 
 const JW='https://apis.justwatch.com/graphql';
 export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$language:Language!,$first:Int!,$search:String!){popularTitles(country:$country,first:$first,filter:{searchQuery:$search}){edges{node{id objectType content(country:$country,language:$language){title shortDescription originalReleaseYear fullPath posterUrl genres{shortName} scoring{imdbScore imdbVotes tomatoMeter}} offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName}}}}}}`;
@@ -59,34 +62,62 @@ async function availabilityForCredit(credit,intent){
 
 function availabilityFailure(error){return /^availability source\b/i.test(String(error?.message||error||''));}
 
-export default async function handler(req,res){
-  try{
-    const q=String(req.query?.q||'').trim();
-    if(!q) return res.status(400).json({error:'Missing q'});
-    const parsed=parseIntent(q);
-    parsed.concepts=extractCinemaConcepts(q);
+export function createSearchHandler({
+  analyticsStore=createAnalyticsStore(),
+  analyticsSecret=process.env.ANALYTICS_ID_SECRET,
+  now=()=>new Date(),
+  logger=console
+}={}){
+  return async function handler(req,res){
+    let q='';
+    let parsed=null;
+    let identity=null;
 
-    if(parsed.kind==='person-filmography'){
-      const personSearch=await runPersonFilmographySearch(parsed,{resolveCredits:resolvePersonCredits,lookupAvailability:credit=>availabilityForCredit(credit,parsed),rank:rankResults,availabilityLimit:60,concurrency:6});
-      if(!personSearch.person) return res.status(200).json({parsed,filmography:[],results:[],availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:.2}});
-      return res.status(200).json({parsed:{...parsed,person:personSearch.person},filmography:personSearch.filmography,results:personSearch.results,availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed'}});
+    async function record(type,resultCount=0,errorCode=null){
+      if(!identity) return false;
+      const event=buildSearchEvent({type,query:q,parsed:parsed||{},resultCount,errorCode,identity,occurredAt:now()});
+      return recordEventBestEffort({store:analyticsStore,event,logger});
     }
 
-    const title=catalogTitle(q);
-    parsed.titleQuery=title||null;
-    const nodes=await jwSearch(title||q,80);
-    let results=nodes.map(mapNode);
-    if(parsed.provider||parsed.freeOnly||parsed.rentOnly||parsed.buyOnly){
-      results=results.map(movie=>{
-        const offers=filterOffers(movie.offers,parsed);
-        return {...movie,offers,streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),best:bestOffer(offers),freeAvailable:offers.some(o=>['FREE','ADS'].includes(o.type))};
-      }).filter(movie=>movie.offers.length);
-    } else results=results.map(movie=>({...movie,best:bestOffer(movie.offers),freeAvailable:movie.offers.some(o=>['FREE','ADS'].includes(o.type))}));
-    results=results.filter(movie=>matchesHardConstraints(movie,parsed));
-    results=rankResults(results,parsed).slice(0,40);
-    return res.status(200).json({parsed,results,liveAt:new Date().toISOString()});
-  }catch(error){
-    if(availabilityFailure(error)) return res.status(503).json({error:'Streaming availability temporarily unavailable',code:'AVAILABILITY_UNAVAILABLE',detail:String(error?.message||error)});
-    return res.status(500).json({error:'MovieFinder search failed',detail:String(error?.message||error)});
-  }
+    try{
+      q=String(req.query?.q||'').trim();
+      if(!q) return res.status(400).json({error:'Missing q'});
+      identity=resolveAnalyticsIdentity(req,res,{secret:analyticsSecret});
+      parsed=parseIntent(q);
+      parsed.concepts=extractCinemaConcepts(q);
+
+      if(parsed.kind==='person-filmography'){
+        const personSearch=await runPersonFilmographySearch(parsed,{resolveCredits:resolvePersonCredits,lookupAvailability:credit=>availabilityForCredit(credit,parsed),rank:rankResults,availabilityLimit:60,concurrency:6});
+        if(!personSearch.person){
+          await record('search_no_results',0);
+          return res.status(200).json({parsed,filmography:[],results:[],availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:.2}});
+        }
+        const resultCount=personSearch.results.length;
+        await record(resultCount?'search_completed':'search_no_results',resultCount);
+        return res.status(200).json({parsed:{...parsed,person:personSearch.person},filmography:personSearch.filmography,results:personSearch.results,availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed'}});
+      }
+
+      const title=catalogTitle(q);
+      parsed.titleQuery=title||null;
+      const nodes=await jwSearch(title||q,80);
+      let results=nodes.map(mapNode);
+      if(parsed.provider||parsed.freeOnly||parsed.rentOnly||parsed.buyOnly){
+        results=results.map(movie=>{
+          const offers=filterOffers(movie.offers,parsed);
+          return {...movie,offers,streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),best:bestOffer(offers),freeAvailable:offers.some(o=>['FREE','ADS'].includes(o.type))};
+        }).filter(movie=>movie.offers.length);
+      } else results=results.map(movie=>({...movie,best:bestOffer(movie.offers),freeAvailable:movie.offers.some(o=>['FREE','ADS'].includes(o.type))}));
+      results=results.filter(movie=>matchesHardConstraints(movie,parsed));
+      results=rankResults(results,parsed).slice(0,40);
+      await record(results.length?'search_completed':'search_no_results',results.length);
+      return res.status(200).json({parsed,results,liveAt:new Date().toISOString()});
+    }catch(error){
+      const availabilityDown=availabilityFailure(error);
+      await record('search_failed',0,availabilityDown?'availability_unavailable':'search_internal_error');
+      if(availabilityDown) return res.status(503).json({error:'Streaming availability temporarily unavailable',code:'AVAILABILITY_UNAVAILABLE',detail:String(error?.message||error)});
+      return res.status(500).json({error:'MovieFinder search failed',detail:String(error?.message||error)});
+    }
+  };
 }
+
+export default createSearchHandler();
