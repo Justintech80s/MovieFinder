@@ -11,7 +11,7 @@ function responseRecorder(){
   };
 }
 
-function jwNode({id,title,year,imdb=8,votes=100000}){
+function jwNode({id,title,year,imdb=8,votes=100000,rt=null,genres=[]}){
   return {
     id,
     objectType:'MOVIE',
@@ -21,7 +21,8 @@ function jwNode({id,title,year,imdb=8,votes=100000}){
       originalReleaseYear:year,
       fullPath:`/us/movie/${id}`,
       posterUrl:null,
-      scoring:{imdbScore:imdb,imdbVotes:votes,tomatoMeter:null}
+      genres:genres.map(shortName=>({shortName})),
+      scoring:{imdbScore:imdb,imdbVotes:votes,tomatoMeter:rt}
     },
     offers:[{
       monetizationType:'FLATRATE',
@@ -33,6 +34,18 @@ function jwNode({id,title,year,imdb=8,votes=100000}){
       package:{clearName:'Example Streamer'}
     }]
   };
+}
+
+async function withCatalog(edges,query){
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async()=>({ok:true,status:200,json:async()=>({data:{popularTitles:{edges}}})});
+  try {
+    const res=responseRecorder();
+    await handler({query:{q:query}},res);
+    return res;
+  } finally {
+    globalThis.fetch=previousFetch;
+  }
 }
 
 test('generic search returns a controlled availability-unavailable response for upstream HTTP failure', async () => {
@@ -50,25 +63,32 @@ test('generic search returns a controlled availability-unavailable response for 
 });
 
 test('exact movie title ranks ahead of unrelated catalog results', async () => {
-  const previousFetch=globalThis.fetch;
-  globalThis.fetch=async()=>({
-    ok:true,
-    status:200,
-    json:async()=>({
-      data:{popularTitles:{edges:[
-        {node:jwNode({id:'something-wild',title:'Something Wild',year:1961})},
-        {node:jwNode({id:'the-godfather',title:'The Godfather',year:1972,imdb:9.2,votes:2200000})}
-      ]}}
-    })
-  });
-  try {
-    const res=responseRecorder();
-    await handler({query:{q:'Where can I watch The Godfather?'}},res);
-    assert.equal(res.statusCode,200);
-    assert.equal(res.body.parsed.titleQuery,'The Godfather');
-    assert.equal(res.body.results[0].title,'The Godfather');
-    assert.ok(res.body.results[0].matchScore > res.body.results[1].matchScore);
-  } finally {
-    globalThis.fetch=previousFetch;
-  }
+  const res=await withCatalog([
+    {node:jwNode({id:'something-wild',title:'Something Wild',year:1961})},
+    {node:jwNode({id:'the-godfather',title:'The Godfather',year:1972,imdb:9.2,votes:2200000})}
+  ],'Where can I watch The Godfather?');
+  assert.equal(res.statusCode,200);
+  assert.equal(res.body.parsed.titleQuery,'The Godfather');
+  assert.equal(res.body.results[0].title,'The Godfather');
+  assert.ok(res.body.results[0].matchScore > res.body.results[1].matchScore);
+});
+
+test('generic API enforces exact-year and genre constraints before ranking', async () => {
+  const res=await withCatalog([
+    {node:jwNode({id:'crime-1994',title:'Crime 1994',year:1994,genres:['Crime']})},
+    {node:jwNode({id:'crime-1995',title:'Crime 1995',year:1995,genres:['Crime']})},
+    {node:jwNode({id:'comedy-1994',title:'Comedy 1994',year:1994,genres:['Comedy']})}
+  ],'1994 crime movies');
+  assert.equal(res.statusCode,200);
+  assert.deepEqual(res.body.results.map(x=>x.title),['Crime 1994']);
+});
+
+test('generic API enforces Rotten Tomatoes threshold with inferred horror genre', async () => {
+  const res=await withCatalog([
+    {node:jwNode({id:'great-horror',title:'Great Horror',year:2024,rt:95,genres:['Horror']})},
+    {node:jwNode({id:'low-horror',title:'Low Horror',year:2024,rt:88,genres:['Horror']})},
+    {node:jwNode({id:'great-drama',title:'Great Drama',year:2024,rt:98,genres:['Drama']})}
+  ],'scary movies Rotten Tomatoes 90%+');
+  assert.equal(res.statusCode,200);
+  assert.deepEqual(res.body.results.map(x=>x.title),['Great Horror']);
 });
