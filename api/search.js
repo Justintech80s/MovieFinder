@@ -24,23 +24,24 @@ function mapNode(n){
   const checkedAt=new Date().toISOString();
   const offers=normalizeOffers((n.offers||[]).map(o=>({provider:o.package?.clearName||o.package?.shortName||o.package?.technicalName,type:o.monetizationType,price:o.retailPriceValue??o.retailPrice,currency:o.currency,quality:o.presentationType,url:o.standardWebURL})),{checkedAt,source:'JustWatch'});
   return {
-    id:n.id,
-    title:c.title,
-    year:c.originalReleaseYear||null,
-    mediaType:n.objectType==='SHOW'?'SHOW':'MOVIE',
-    description:c.shortDescription||'',
-    genres:(c.genres||[]).map(g=>g?.shortName).filter(Boolean),
-    poster:poster(c.posterUrl),
-    ratings:{imdb:c.scoring?.imdbScore??null,rottenTomatoes:c.scoring?.tomatoMeter??null,imdbVotes:c.scoring?.imdbVotes??null},
-    offers,
-    streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),
-    justwatchUrl:c.fullPath?`https://www.justwatch.com${c.fullPath}`:null
+    id:n.id,title:c.title,year:c.originalReleaseYear||null,mediaType:n.objectType==='SHOW'?'SHOW':'MOVIE',description:c.shortDescription||'',
+    genres:(c.genres||[]).map(g=>g?.shortName).filter(Boolean),poster:poster(c.posterUrl),
+    ratings:{imdb:c.scoring?.imdbScore??null,rottenTomatoes:c.scoring?.tomatoMeter??null,imdbVotes:c.scoring?.imdbVotes??null},offers,
+    streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),justwatchUrl:c.fullPath?`https://www.justwatch.com${c.fullPath}`:null
   };
 }
 
 function bestOffer(os=[]){
   const rank={FREE:0,ADS:1,FLATRATE:2,RENT:3,BUY:4};
   return [...os].sort((a,b)=>(rank[a.type]??9)-(rank[b.type]??9)||(a.price??999)-(b.price??999))[0]||null;
+}
+
+function catalogTitle(raw=''){
+  return String(raw)
+    .replace(/^(?:where can i (?:watch|find)|find me|show me|give me)\s+/i,'')
+    .replace(/\s+(?:for\s+free|free|available\s+on\b.*|to\s+stream\b.*|streaming\b.*|rent(?:al|ing)?\b.*|buy\b.*|purchase\b.*)$/i,'')
+    .replace(/[?.!]+$/,'')
+    .trim();
 }
 
 async function availabilityForCredit(credit,intent){
@@ -53,21 +54,10 @@ async function availabilityForCredit(credit,intent){
   if(!movie) return null;
   const matching=filterOffers(movie.offers,intent);
   if(!matching.length) return null;
-  return {
-    ...movie,
-    offers:matching,
-    streamingTimeline:matching.map(o=>o.timeline).filter(Boolean),
-    best:bestOffer(matching),
-    freeAvailable:matching.some(o=>['FREE','ADS'].includes(o.type)),
-    personCredit:credit,
-    dataConfidence:.91
-  };
+  return {...movie,offers:matching,streamingTimeline:matching.map(o=>o.timeline).filter(Boolean),best:bestOffer(matching),freeAvailable:matching.some(o=>['FREE','ADS'].includes(o.type)),personCredit:credit,dataConfidence:.91};
 }
 
-function availabilityFailure(error){
-  const detail=String(error?.message||error||'');
-  return /^availability source\b/i.test(detail);
-}
+function availabilityFailure(error){return /^availability source\b/i.test(String(error?.message||error||''));}
 
 export default async function handler(req,res){
   try{
@@ -77,31 +67,12 @@ export default async function handler(req,res){
     parsed.concepts=extractCinemaConcepts(q);
 
     if(parsed.kind==='person-filmography'){
-      const personSearch=await runPersonFilmographySearch(parsed,{
-        resolveCredits:resolvePersonCredits,
-        lookupAvailability:credit=>availabilityForCredit(credit,parsed),
-        rank:rankResults,
-        availabilityLimit:60,
-        concurrency:6
-      });
-      if(!personSearch.person){
-        return res.status(200).json({parsed,filmography:[],results:[],availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:.2}});
-      }
-      return res.status(200).json({
-        parsed:{...parsed,person:personSearch.person},
-        filmography:personSearch.filmography,
-        results:personSearch.results,
-        availabilitySummary:personSearch.availabilitySummary,
-        liveAt:new Date().toISOString(),
-        dataQuality:{
-          confidence:personSearch.results.length?.9:.62,
-          filmographySource:'Wikidata',
-          availabilitySource:'current U.S. availability feed'
-        }
-      });
+      const personSearch=await runPersonFilmographySearch(parsed,{resolveCredits:resolvePersonCredits,lookupAvailability:credit=>availabilityForCredit(credit,parsed),rank:rankResults,availabilityLimit:60,concurrency:6});
+      if(!personSearch.person) return res.status(200).json({parsed,filmography:[],results:[],availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:.2}});
+      return res.status(200).json({parsed:{...parsed,person:personSearch.person},filmography:personSearch.filmography,results:personSearch.results,availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed'}});
     }
 
-    const title=q.replace(/^(?:where can i (?:watch|find)|find me|show me|give me)\s+/i,'').replace(/\b(?:for free|available on|to stream|streaming|rent|buy)\b.*$/i,'').replace(/[?.!]+$/,'').trim();
+    const title=catalogTitle(q);
     parsed.titleQuery=title||null;
     const nodes=await jwSearch(title||q,80);
     let results=nodes.map(mapNode);
@@ -110,16 +81,12 @@ export default async function handler(req,res){
         const offers=filterOffers(movie.offers,parsed);
         return {...movie,offers,streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),best:bestOffer(offers),freeAvailable:offers.some(o=>['FREE','ADS'].includes(o.type))};
       }).filter(movie=>movie.offers.length);
-    } else {
-      results=results.map(movie=>({...movie,best:bestOffer(movie.offers),freeAvailable:movie.offers.some(o=>['FREE','ADS'].includes(o.type))}));
-    }
+    } else results=results.map(movie=>({...movie,best:bestOffer(movie.offers),freeAvailable:movie.offers.some(o=>['FREE','ADS'].includes(o.type))}));
     results=results.filter(movie=>matchesHardConstraints(movie,parsed));
     results=rankResults(results,parsed).slice(0,40);
     return res.status(200).json({parsed,results,liveAt:new Date().toISOString()});
   }catch(error){
-    if(availabilityFailure(error)){
-      return res.status(503).json({error:'Streaming availability temporarily unavailable',code:'AVAILABILITY_UNAVAILABLE',detail:String(error?.message||error)});
-    }
+    if(availabilityFailure(error)) return res.status(503).json({error:'Streaming availability temporarily unavailable',code:'AVAILABILITY_UNAVAILABLE',detail:String(error?.message||error)});
     return res.status(500).json({error:'MovieFinder search failed',detail:String(error?.message||error)});
   }
 }
