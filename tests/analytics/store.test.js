@@ -20,6 +20,20 @@ test('insertEvent sends a server-side PostgREST insert with service-role auth', 
   assert.deepEqual(JSON.parse(seen[0].init.body),event);
 });
 
+test('analytics database requests use a bounded AbortSignal timeout', async () => {
+  let seenSignal;
+  const store=createAnalyticsStore({
+    env:{SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'service-key',ANALYTICS_DB_TIMEOUT_MS:'250'},
+    fetchImpl:async (_url,init)=>{
+      seenSignal=init.signal;
+      return {ok:true,status:201,json:async()=>[],headers:new Headers()};
+    }
+  });
+  await store.insertEvent({event_type:'search_completed'});
+  assert.ok(seenSignal instanceof AbortSignal);
+  assert.equal(seenSignal.aborted,false);
+});
+
 test('missing Supabase configuration disables writes without network calls', async () => {
   let calls=0;
   const store=createAnalyticsStore({env:{},fetchImpl:async()=>{calls++;throw new Error('should not run');}});
