@@ -1,163 +1,94 @@
 # MovieFinder Search Intelligence Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+## Current execution status — 2026-08-31
 
-**Goal:** Preserve the existing MovieFinder production application while upgrading its backend to correctly understand director/person filmography queries, actor queries, cinema concepts, dynamic providers, and confidence-aware hybrid ranking.
+- Backend rebuild committed on `feature/search-brain-v2`.
+- Person/director intent parsing tests verified locally: 5/5 passing.
+- Production Vercel deployment remains READY and untouched.
+- Production `/api/search` runtime check shows no current fatal application error; only Node's `url.parse()` deprecation warning is recurring.
+- Vercel Git connection has now been confirmed by the user for `Justintech80s/MovieFinder`.
+- This commit intentionally triggers a fresh Vercel Preview deployment from `feature/search-brain-v2` so acceptance testing can begin before any production promotion.
 
-**Architecture:** First recover the exact production baseline and commit it without intentional UI changes. Then implement search intelligence as focused backend modules behind the existing `/api/search` contract, deploy a preview, run regression/acceptance searches, and only then promote the verified version.
+## Goal
 
-**Tech Stack:** JavaScript/Node.js, Vercel Functions, existing JustWatch-compatible availability integration, public structured-data fallback for person resolution, GitHub/Vercel preview deployments.
+Upgrade MovieFinder search so natural-language person/director/actor searches, film concepts, availability constraints, and related-film reasoning work reliably while preserving the current production frontend and support experience.
 
-**Spec:** `docs/superpowers/specs/2026-08-31-moviefinder-search-intelligence-design.md`
+## Safety constraints
 
-## Global Constraints
-- Preserve the current visible MovieFinder UI, branding, support screen, support destinations, and keyboard behavior.
-- Never commit credentials, API keys, tokens, or private secrets.
-- Person/entity recognition must run before generic title/franchise extraction.
-- Streaming/rental/purchase claims require current availability evidence.
-- Do not scrape IMDb, Rotten Tomatoes, or streaming sites in violation of their terms.
-- Do not promote or claim production success until live endpoint tests pass.
+1. Do not modify the existing support/payment destinations.
+2. Do not claim the new backend is live before preview and production verification pass.
+3. Do not scrape IMDb, Rotten Tomatoes, Google, or streaming sites in prohibited ways.
+4. Preserve the current `/api/search` response shape used by the frontend.
+5. Promote only after regression queries pass.
 
----
+## Tasks
 
-### Task 1: Recover and lock the production baseline
+### 1. Recover and lock production baseline
 
-**Files:**
-- Create from recovered source: `index.html` (or exact production frontend path)
-- Create from recovered source: `api/search.js` (or exact production API path)
-- Create: `.gitignore`
-- Create: `README.md`
+- Capture current production frontend behavior and API contract.
+- Keep production deployment unchanged until the feature branch passes preview tests.
 
-**Interfaces:**
-- Consumes: exact source/artifact behind the current Vercel production deployment.
-- Produces: a GitHub baseline whose behavior matches production.
+### 2. Add person/director intent parsing
 
-- [ ] **Step 1:** Obtain the exact current production source/build inputs from the Vercel project or original source workspace; do not reconstruct the support/payment UI from memory.
-- [ ] **Step 2:** Verify the recovered frontend contains the current MovieFinder headline, search interaction, support screen, and Enter-key behavior.
-- [ ] **Step 3:** Verify the recovered backend returns successful responses for `The Godfather` and `Star Wars free` before modification.
-- [ ] **Step 4:** Add `.gitignore` entries for `.env`, `.env.*`, `.vercel`, `node_modules`, and local credentials.
-- [ ] **Step 5:** Commit the recovered baseline with message `chore: capture current MovieFinder production baseline`.
+- Detect person-filmography intent before generic title extraction.
+- Support director phrases such as Quentin Tarantino, Martin Scorsese, Christopher Nolan, and Spike Lee.
+- Support cast/actor phrases such as Denzel Washington and Will Smith.
+- Preserve free/provider/rent/buy intent.
+- Tests must cover these cases.
 
-### Task 2: Add person/director intent parsing with tests
+### 3. Add provider-independent person/filmography resolution
 
-**Files:**
-- Create: `lib/search/intent.js`
-- Create: `tests/search/intent.test.js`
-- Modify: `api/search.js`
+- Use a provider-independent resolver interface.
+- Initial no-key implementation may use Wikidata structured data.
+- Filmography records should retain title, year, role, and IMDb ID when supplied by the structured source.
 
-**Interfaces:**
-- Produces: `parseIntent(query)` returning `{ kind, personName, role, mediaType, availabilityIntent, constraints, confidence }`.
+### 4. Normalize availability providers dynamically
 
-- [ ] **Step 1:** Write failing tests asserting `all Quentin Tarantino movies to stream` returns `kind: person-filmography`, `personName: Quentin Tarantino`, `role: director` and no literal `titleQuery`.
-- [ ] **Step 2:** Add failing actor tests for Denzel Washington and Will Smith filmography queries.
-- [ ] **Step 3:** Run the tests and confirm the current parser fails these cases.
-- [ ] **Step 4:** Implement `parseIntent()` so high-confidence person intent precedes title/franchise extraction.
-- [ ] **Step 5:** Run tests and commit with `feat: recognize person and director search intent`.
+- Normalize offer/provider names returned by the current availability engine.
+- Apply free, subscription, rent, buy, and provider constraints after normalization.
+- Do not assume the provider universe is permanently limited to a hard-coded list.
 
-### Task 3: Add provider-independent person/filmography resolution
+### 5. Add Cinema Graph concept scoring and hybrid ranking
 
-**Files:**
-- Create: `lib/search/people.js`
-- Create: `tests/search/people.test.js`
-- Modify: `api/search.js`
+- Recognize film movements/subgenres/styles including giallo, spaghetti western, New Hollywood, grindhouse, exploitation, blaxploitation, neo-noir, revenge thriller, paranoid/conspiracy-driven cinema, and related concepts.
+- Combine entity match, semantic/concept match, graph relationship match, availability, rating/popularity when available, freshness, and confidence.
 
-**Interfaces:**
-- Consumes: `{ personName, role }` from `parseIntent()`.
-- Produces: `resolvePersonCredits(name, role)` returning normalized `{ title, year, roles, ids }[]`.
+### 6. Add confidence and verification routing
 
-- [ ] **Step 1:** Write fixture-driven failing tests for director and actor credit normalization.
-- [ ] **Step 2:** Implement a no-key structured-data resolver with timeout, deduplication, and normalized role handling.
-- [ ] **Step 3:** Ensure resolver failure returns an explicit unverified/no-results state rather than falling back to treating the person's name as a movie title.
-- [ ] **Step 4:** Run tests and commit with `feat: add filmography resolution layer`.
+- Return confidence/data-quality signals.
+- Mark ambiguous or weakly matched results for verification rather than presenting them as certain.
 
-### Task 4: Normalize availability providers dynamically
+### 7. Preserve existing `/api/search` response/frontend behavior
 
-**Files:**
-- Create: `lib/search/availability.js`
-- Create: `tests/search/availability.test.js`
-- Modify: `api/search.js`
+- Keep `parsed`, `results`, `liveAt`, result title/year/mediaType/description/poster/ratings/offers/best/freeAvailable fields compatible with the frontend.
+- Keep existing title/franchise searches working.
 
-**Interfaces:**
-- Produces: `normalizeOffers(rawOffers)` returning normalized provider, monetization type, price, currency, URL, and freshness fields.
+### 8. Vercel preview deployment and acceptance verification
 
-- [ ] **Step 1:** Write failing fixtures covering subscription, free, ads, rent, and buy offers plus an unfamiliar provider name.
-- [ ] **Step 2:** Implement dynamic provider normalization while retaining aliases for common services.
-- [ ] **Step 3:** Verify an unfamiliar legitimate provider is retained rather than silently dropped.
-- [ ] **Step 4:** Run tests and commit with `feat: normalize dynamic streaming providers`.
+Deploy `feature/search-brain-v2` to a preview, then run at minimum:
 
-### Task 5: Add Cinema Graph concept scoring and hybrid ranking
+- `Where can I find all of Quentin Tarantino movies to stream`
+- `Martin Scorsese movies streaming`
+- `Christopher Nolan films streaming`
+- `Spike Lee films available free`
+- `All Denzel Washington films available on streaming`
+- `All Will Smith movies available on streaming`
+- `Find me a grimy 1970s revenge thriller like Rolling Thunder`
+- `Find me a scary movie with a Rotten Tomatoes score of 90% or higher`
+- `Where can I watch The Godfather?`
+- `Where can I watch the Star Wars movie for free?`
+- `Find me a giallo movie`
+- `Find me a spaghetti western`
 
-**Files:**
-- Create: `lib/search/cinema-graph.js`
-- Create: `lib/search/rank.js`
-- Create: `tests/search/rank.test.js`
-- Modify: `api/search.js`
+Verify no GraphQL/schema/runtime errors and inspect relevance/availability behavior.
 
-**Interfaces:**
-- Produces: `scoreCinemaRelations(movie, intent)` and `rankResults(results, intent)`.
+### 9. Production promotion and post-deploy verification
 
-- [ ] **Step 1:** Write failing ranking tests for `grimy 1970s revenge thriller like Rolling Thunder`, `giallo`, and `spaghetti western`.
-- [ ] **Step 2:** Implement concept expansion for film movements/subgenres/style/reference-film relationships already defined by MovieFinder Search Brain v2.
-- [ ] **Step 3:** Implement hybrid ranking where hard constraints and exact entity intent outrank soft Cinema Graph similarity.
-- [ ] **Step 4:** Add `cinemaWhy` and numeric match/confidence values without requiring visible frontend changes.
-- [ ] **Step 5:** Run tests and commit with `feat: add Cinema Graph hybrid ranking`.
+Only after preview passes:
 
-### Task 6: Add confidence and verification routing
-
-**Files:**
-- Create: `lib/search/verify.js`
-- Create: `tests/search/verify.test.js`
-- Modify: `api/search.js`
-
-**Interfaces:**
-- Produces: `assessConfidence(result, intent)` and `needsVerification(result)`.
-
-- [ ] **Step 1:** Write failing tests for ambiguous person matches, exact title matches, and stale/missing availability.
-- [ ] **Step 2:** Implement confidence thresholds and explicit verification-needed state.
-- [ ] **Step 3:** Ensure MovieFinder does not present low-confidence filmography/title guesses as verified results.
-- [ ] **Step 4:** Run tests and commit with `feat: add search confidence verification`.
-
-### Task 7: Preserve the existing `/api/search` response and frontend behavior
-
-**Files:**
-- Modify: `api/search.js`
-- Test: `tests/search/regression.test.js`
-
-**Interfaces:**
-- Consumes: new search modules.
-- Produces: backward-compatible response consumed by the existing frontend.
-
-- [ ] **Step 1:** Add regression fixtures for Godfather, Star Wars free, horror RT threshold, provider-specific horror, and TV title searches.
-- [ ] **Step 2:** Route person intent through filmography + availability; route other intents through the existing catalog path plus new ranking.
-- [ ] **Step 3:** Confirm existing response fields remain present and additive fields do not break rendering.
-- [ ] **Step 4:** Run the complete test suite and commit with `feat: integrate MovieFinder search brain v2`.
-
-### Task 8: Preview deployment and acceptance verification
-
-**Files:**
-- No intentional frontend changes.
-
-**Interfaces:**
-- Consumes: feature branch.
-- Produces: verified Vercel preview candidate.
-
-- [ ] **Step 1:** Deploy the feature branch as a Vercel preview, not production.
-- [ ] **Step 2:** Test all acceptance searches from the design spec against the preview API/UI.
-- [ ] **Step 3:** Confirm Tarantino/Scorsese/Nolan/Spike Lee resolve as people/directors and Denzel Washington/Will Smith resolve as actors.
-- [ ] **Step 4:** Confirm current availability offers are returned only when supported by the availability adapter.
-- [ ] **Step 5:** Confirm the visible UI and support screen are unchanged from baseline.
-- [ ] **Step 6:** Inspect Vercel runtime/build errors and fix any regressions before merge.
-
-### Task 9: Production promotion and post-deploy verification
-
-**Files:**
-- No additional code unless verification finds a regression.
-
-**Interfaces:**
-- Produces: verified live MovieFinder release.
-
-- [ ] **Step 1:** Merge the reviewed feature branch only after preview acceptance passes.
-- [ ] **Step 2:** Confirm the resulting Vercel production deployment reaches READY.
-- [ ] **Step 3:** Re-run Tarantino, Scorsese, Denzel Washington, Will Smith, Godfather, and Star Wars-free smoke tests against production.
-- [ ] **Step 4:** Confirm homepage HTTP success, Enter-key search, and unchanged support screen.
-- [ ] **Step 5:** Only after all checks pass, report the director/person search upgrade as live.
+- Merge the feature branch.
+- Promote/deploy to production.
+- Verify homepage HTTP 200.
+- Verify support screen and keyboard search remain unchanged.
+- Re-run director/person and legacy title searches against production.
+- Do not mark the feature complete until these checks pass.
