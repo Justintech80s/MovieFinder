@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/search-brain-v2
+      - feature/python-search-adapter
   pull_request:
     branches:
       - main
