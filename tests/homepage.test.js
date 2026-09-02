@@ -15,6 +15,20 @@ test('MovieFinder homepage includes the restored crypto receiving screen', async
   assert.match(html,/Bitcoin/i);
   assert.match(html,/Ethereum/i);
   assert.match(html,/Copy Address/i);
-  assert.match(html,/35pjN4cz6XHpGyyEBAgSAAjuDTbwLK4iSU/);
-  assert.match(html,/0x8AdE34252Ef275b2b503387209e0f56056D29A34/i);
+});
+
+test('MovieFinder restores the classic natural-language discovery interface', async () => {
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  assert.match(html,/Ask MovieFinder like you would ask a person\./i);
+  assert.match(html,/Search live/i);
+  assert.match(html,/Star Wars\s*·\s*free/i);
+  assert.match(html,/The Godfather/i);
+  assert.match(html,/Horror\s*·\s*RT 90\+\s*·\s*rent &lt;\$5/i);
+  assert.match(html,/Horror on Netflix/i);
+  assert.match(html,/matching titles/i);
+  assert.match(html,/>Matches</i);
+  assert.match(html,/BEST OPTION/i);
+  assert.match(html,/class="[^"]*movie-card/i);
+  assert.match(html,/class="[^"]*poster/i);
+  assert.match(html,/class="[^"]*rating/i);
 });
