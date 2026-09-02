@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/search-brain-v2
+      - feature/persistent-cinema-graph-ingestion
   pull_request:
     branches:
       - main
