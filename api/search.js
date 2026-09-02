@@ -4,7 +4,10 @@ import { normalizeOffers, filterOffers } from '../lib/search/availability.js';
 import { extractCinemaConcepts } from '../lib/search/cinema-graph.js';
 import { buildSearchPlan } from '../lib/search/planner.js';
 import { buildEvidencePacket } from '../lib/search/rag.js';
-import { rankResults } from '../lib/search/rank.js';
+import { rankResults, finalizeHybridResults } from '../lib/search/rank.js';
+import { expandSearchQuery } from '../lib/search/query-expansion.js';
+import { buildHybridRankings } from '../lib/search/hybrid-search.js';
+import { reciprocalRankFusion } from '../lib/search/rank-fusion.js';
 import { runPersonFilmographySearch } from '../lib/search/person-search.js';
 import { matchesHardConstraints } from '../lib/search/constraints.js';
 import { resolveAnalyticsIdentity } from '../lib/analytics/identity.js';
@@ -42,7 +45,9 @@ export function createSearchHandler({analyticsStore=createAnalyticsStore(),analy
    }
    const title=catalogTitle(q);parsed.titleQuery=title||null;const nodes=await jwSearch(title||q,80);let results=nodes.map(mapNode);
    if(parsed.provider||parsed.freeOnly||parsed.rentOnly||parsed.buyOnly){results=results.map(movie=>{const offers=filterOffers(movie.offers,parsed);return {...movie,offers,streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),best:bestOffer(offers),freeAvailable:offers.some(o=>['FREE','ADS'].includes(o.type))};}).filter(movie=>movie.offers.length);}else results=results.map(movie=>({...movie,best:bestOffer(movie.offers),freeAvailable:movie.offers.some(o=>['FREE','ADS'].includes(o.type))}));
-   results=results.filter(movie=>matchesHardConstraints(movie,parsed));results=rankResults(results,parsed).slice(0,40);const evidence=buildEvidencePacket({query:q,candidates:results});await record(results.length?'search_completed':'search_no_results',results.length);return res.status(200).json({parsed,plan,evidence,results:trackedResults(results),liveAt:new Date().toISOString()});
+   results=results.filter(movie=>matchesHardConstraints(movie,parsed));
+   const expansion=expandSearchQuery(q);const hybrid=buildHybridRankings(results,expansion,parsed);const fused=reciprocalRankFusion(hybrid.lists);results=finalizeHybridResults(fused,hybrid.signalsById,parsed).slice(0,40);
+   const evidence=buildEvidencePacket({query:q,candidates:results});await record(results.length?'search_completed':'search_no_results',results.length);return res.status(200).json({parsed,plan,evidence,searchMode:'hybrid-v1',results:trackedResults(results),liveAt:new Date().toISOString()});
   }catch(error){const availabilityDown=availabilityFailure(error);await record('search_failed',0,availabilityDown?'availability_unavailable':'search_internal_error');if(availabilityDown)return res.status(503).json({error:'Streaming availability temporarily unavailable',code:'AVAILABILITY_UNAVAILABLE',detail:String(error?.message||error)});return res.status(500).json({error:'MovieFinder search failed',detail:String(error?.message||error)});}
  };
 }
