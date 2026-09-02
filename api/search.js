@@ -79,6 +79,7 @@ export function createSearchHandler({
   analyticsSecret=process.env.ANALYTICS_ID_SECRET,
   outboundSecret=process.env.OUTBOUND_LINK_SECRET,
   rateLimiter=createMemoryRateLimiter(),
+  liveOrchestrator=null,
   now=()=>new Date(),
   logger=console
 }={}){
@@ -134,6 +135,18 @@ export function createSearchHandler({
         const resultCount=personSearch.results.length;
         await record(resultCount?'search_completed':'search_no_results',resultCount);
         return res.status(200).json({parsed:{...parsed,person:personSearch.person},filmography:personSearch.filmography,results:trackedResults(personSearch.results),availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed'}});
+      }
+
+      if(typeof liveOrchestrator?.search==='function'){
+        const orchestrated=await liveOrchestrator.search({query:q,parsedIntent:parsed});
+        const results=Array.isArray(orchestrated?.results)?orchestrated.results:[];
+        await record(results.length?'search_completed':'search_no_results',results.length);
+        return res.status(200).json({
+          ...orchestrated,
+          parsed:orchestrated?.parsed||parsed,
+          results:trackedResults(results),
+          liveAt:new Date().toISOString()
+        });
       }
 
       const title=catalogTitle(q);
