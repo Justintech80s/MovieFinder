@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import handler from '../../api/search.js';
+import handler, { createSearchHandler } from '../../api/search.js';
 
 function responseRecorder(){
   return {
     statusCode:200,
     body:null,
+    headers:{},
+    setHeader(name,value){this.headers[String(name).toLowerCase()]=value;},
     status(code){this.statusCode=code;return this;},
     json(body){this.body=body;return this;}
   };
@@ -44,7 +46,7 @@ async function withCatalog(edges,query,onRequest=()=>{}){
   };
   try {
     const res=responseRecorder();
-    await handler({query:{q:query}},res);
+    await handler({method:'GET',query:{q:query},headers:{}},res);
     return res;
   } finally {
     globalThis.fetch=previousFetch;
@@ -56,7 +58,7 @@ test('generic search returns a controlled availability-unavailable response for 
   globalThis.fetch=async()=>({ok:false,status:503,json:async()=>({})});
   try {
     const res=responseRecorder();
-    await handler({query:{q:'Where can I watch The Godfather?'}},res);
+    await handler({method:'GET',query:{q:'Where can I watch The Godfather?'},headers:{}},res);
     assert.equal(res.statusCode,503);
     assert.equal(res.body.code,'AVAILABILITY_UNAVAILABLE');
     assert.match(res.body.error,/availability/i);
@@ -106,4 +108,43 @@ test('generic API enforces Rotten Tomatoes threshold with inferred horror genre'
   ],'scary movies Rotten Tomatoes 90%+');
   assert.equal(res.statusCode,200);
   assert.deepEqual(res.body.results.map(x=>x.title),['Great Horror']);
+});
+
+test('API delegates validated searches to the live orchestrator while preserving response compatibility', async () => {
+  const calls=[];
+  const liveOrchestrator={
+    async search(input){
+      calls.push(input);
+      return {
+        parsed:input.parsedIntent,
+        results:[{id:'graph-1',title:'Verified Graph Movie',year:1974,offers:[]}],
+        reasoningMode:'graph+ai',
+        answer:'Verified explanation',
+        evidence:{movies:[{id:'graph-1',title:'Verified Graph Movie',year:1974}]},
+        ai:{provider:'openai',model:'test-model'}
+      };
+    }
+  };
+  const searchHandler=createSearchHandler({
+    liveOrchestrator,
+    analyticsStore:{insert:async()=>true},
+    analyticsSecret:'test-analytics-secret',
+    outboundSecret:null,
+    rateLimiter:{consume:async()=>({allowed:true})},
+    logger:{warn(){}}
+  });
+  const res=responseRecorder();
+
+  await searchHandler({method:'GET',query:{q:'1970s paranoid thrillers influenced by European cinema'},headers:{}},res);
+
+  assert.equal(res.statusCode,200);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].query,'1970s paranoid thrillers influenced by European cinema');
+  assert.equal(calls[0].parsedIntent.concepts.length>0,true);
+  assert.equal(res.body.results[0].title,'Verified Graph Movie');
+  assert.equal(res.body.reasoningMode,'graph+ai');
+  assert.equal(res.body.answer,'Verified explanation');
+  assert.deepEqual(res.body.ai,{provider:'openai',model:'test-model'});
+  assert.ok(res.body.liveAt);
+  assert.equal(res.headers['x-content-type-options'],'nosniff');
 });
