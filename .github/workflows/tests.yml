@@ -1,16 +1,27 @@
-name: Search Brain Tests
+name: MovieFinder CI
 
 on:
   push:
     branches:
-      - feature/search-brain-v2
+      - main
+      - 'feat/**'
+      - 'feature/**'
   pull_request:
     branches:
       - main
 
+concurrency:
+  group: moviefinder-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  test:
+  node-tests:
+    name: Node search and Cinema Brain tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,10 +31,20 @@ jobs:
           node-version: 20
       - name: Run Node tests
         run: npm test
+
+  python-tests:
+    name: Python MovieBrain contract tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: python_search/requirements.txt
       - name: Install Python dependencies
         run: python -m pip install -r python_search/requirements.txt
       - name: Run Python contract tests
