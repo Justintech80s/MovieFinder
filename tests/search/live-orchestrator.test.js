@@ -175,3 +175,133 @@ test('provider-constrained graph results require current matching availability b
   assert.equal(result.results[0].offers[0].provider, 'Netflix');
   assert.equal(result.evidence.currentAvailability.length, 1);
 });
+
+test('simple deterministic search never invokes the model router', async () => {
+  let aiCalls = 0;
+  const orchestrator = createLiveOrchestrator({
+    modelRouter: {
+      async run() {
+        aiCalls += 1;
+        throw new Error('AI should not be called');
+      }
+    },
+    deterministicSearch: async () => ({
+      parsed: { kind: 'person-filmography', person: 'Will Smith', provider: 'Netflix' },
+      results: [{ id: 'movie:heat', title: 'Heat', year: 1995 }]
+    })
+  });
+
+  const result = await orchestrator.search({
+    query: 'Will Smith movies on Netflix',
+    parsedIntent: { kind: 'person-filmography', person: 'Will Smith', provider: 'Netflix', concepts: [] }
+  });
+
+  assert.equal(aiCalls, 0);
+  assert.equal(result.reasoningMode, 'deterministic');
+});
+
+test('complex graph search sends only verified evidence to the model router', async () => {
+  const nodes = new Map([
+    ['movie:conversation', { id: 'movie:conversation', type: 'Movie', name: 'The Conversation', properties: { year: 1974 } }],
+    ['movie:parallax', { id: 'movie:parallax', type: 'Movie', name: 'The Parallax View', properties: { year: 1974 } }]
+  ]);
+  let captured = null;
+  const orchestrator = createLiveOrchestrator({
+    graphStore: {
+      async getNode(id) { return nodes.get(id) || null; },
+      async traverse() { return [{ from: 'movie:conversation', to: 'movie:parallax', type: 'RELATED_TO' }]; }
+    },
+    lookupAvailability: async movie => ({ ...movie, offers: [{ provider: 'Max', type: 'FLATRATE' }] }),
+    modelRouter: {
+      async run(capability, input, options) {
+        captured = { capability, input, options };
+        return { provider: 'test-provider', output: { model: 'test-model', content: 'Verified relationship explanation.' } };
+      }
+    },
+    deterministicSearch: async () => ({ parsed: {}, results: [] })
+  });
+
+  const result = await orchestrator.search({
+    query: 'movies like The Conversation with political surveillance themes',
+    parsedIntent: { kind: 'discovery', similarityAnchor: 'movie:conversation', concepts: ['similarity', 'surveillance'] },
+    headers: { authorization: 'must-not-leak' },
+    env: { SECRET: 'must-not-leak' }
+  });
+
+  assert.equal(captured.capability, 'cinema_reasoning');
+  assert.deepEqual(captured.input.evidence, result.evidence);
+  assert.deepEqual(captured.options.context, result.evidence);
+  assert.equal('headers' in captured.input.evidence, false);
+  assert.equal('env' in captured.input.evidence, false);
+  assert.equal(result.reasoningMode, 'graph+ai');
+  assert.equal(result.ai.provider, 'test-provider');
+  assert.equal(result.ai.model, 'test-model');
+});
+
+test('AI output cannot overwrite verified movie identity year or availability', async () => {
+  const nodes = new Map([
+    ['movie:conversation', { id: 'movie:conversation', type: 'Movie', name: 'The Conversation', properties: { year: 1974 } }]
+  ]);
+  const orchestrator = createLiveOrchestrator({
+    graphStore: {
+      async getNode(id) { return nodes.get(id) || null; },
+      async traverse() { return []; }
+    },
+    lookupAvailability: async movie => ({ ...movie, offers: [{ provider: 'Max', type: 'FLATRATE' }] }),
+    modelRouter: {
+      async run() {
+        return {
+          provider: 'test-provider',
+          output: {
+            model: 'test-model',
+            content: 'AI commentary only.',
+            structuredData: {
+              results: [{ id: 'movie:conversation', title: 'False Title', year: 2001, offers: [{ provider: 'Netflix' }] }]
+            }
+          }
+        };
+      }
+    },
+    deterministicSearch: async () => ({ parsed: {}, results: [] })
+  });
+
+  const result = await orchestrator.search({
+    query: 'why is The Conversation an important surveillance film',
+    parsedIntent: { kind: 'discovery', similarityAnchor: 'movie:conversation', concepts: ['surveillance'] }
+  });
+
+  assert.equal(result.results[0].title, 'The Conversation');
+  assert.equal(result.results[0].year, 1974);
+  assert.equal(result.results[0].offers[0].provider, 'Max');
+  assert.equal(result.answer, 'AI commentary only.');
+});
+
+test('AI provider failure preserves verified graph results without propagating an error', async () => {
+  const nodes = new Map([
+    ['movie:conversation', { id: 'movie:conversation', type: 'Movie', name: 'The Conversation', properties: { year: 1974 } }]
+  ]);
+  let aiCalls = 0;
+  const orchestrator = createLiveOrchestrator({
+    graphStore: {
+      async getNode(id) { return nodes.get(id) || null; },
+      async traverse() { return []; }
+    },
+    modelRouter: {
+      async run() {
+        aiCalls += 1;
+        throw Object.assign(new Error('provider timeout'), { code: 'MODEL_TIMEOUT' });
+      }
+    },
+    deterministicSearch: async () => ({ parsed: {}, results: [] })
+  });
+
+  const result = await orchestrator.search({
+    query: 'why is The Conversation influential',
+    parsedIntent: { kind: 'discovery', similarityAnchor: 'movie:conversation', concepts: ['influence'] }
+  });
+
+  assert.equal(aiCalls, 1);
+  assert.equal(result.results[0].title, 'The Conversation');
+  assert.equal(result.reasoningMode, 'graph');
+  assert.equal('ai' in result, false);
+});
