@@ -28,6 +28,27 @@ test('wikidata client fetches and deduplicates requested entities', async () => 
   assert.deepEqual(Object.keys(result.entities), ['Q1']);
 });
 
+test('wikidata client identifies MovieFinder with an explicit User-Agent', async () => {
+  const requests = [];
+  const fetchImpl = async (url, options = {}) => {
+    requests.push({ url: String(url), options });
+    return {
+      ok: true,
+      async json() {
+        return { entities: { Q1: { id: 'Q1', claims: {} } } };
+      }
+    };
+  };
+
+  const client = createWikidataClient({ fetchImpl });
+  await client.fetchSeed('Q1');
+
+  assert.equal(requests.length, 1);
+  assert.match(requests[0].options.headers['User-Agent'], /^MovieFinder\//);
+  assert.match(requests[0].options.headers['User-Agent'], /github\.com\/Justintech80s\/MovieFinder/i);
+  assert.equal(requests[0].options.headers.Accept, 'application/json');
+});
+
 test('wikidata client retries retryable failures and succeeds', async () => {
   let attempts = 0;
   const fetchImpl = async () => {
