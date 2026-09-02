@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { shouldUseAi, buildVerifiedEvidence } from '../../lib/search/live-orchestrator.js';
+import { shouldUseAi, buildVerifiedEvidence, createLiveOrchestrator } from '../../lib/search/live-orchestrator.js';
 
 test('simple direct provider lookup skips AI', () => {
   assert.equal(shouldUseAi({
@@ -75,4 +75,65 @@ test('verified evidence caps graph, movie, availability, and provenance arrays',
   assert.equal(evidence.movies.length, 40);
   assert.equal(evidence.currentAvailability.length, 120);
   assert.equal(evidence.provenance.length, 80);
+});
+
+test('complex anchored query reads bounded persistent graph candidates', async () => {
+  const nodes = new Map([
+    ['movie:conversation', { id: 'movie:conversation', type: 'Movie', name: 'The Conversation', properties: { year: 1974 } }],
+    ['theme:surveillance', { id: 'theme:surveillance', type: 'Theme', name: 'Surveillance' }],
+    ['movie:parallax', { id: 'movie:parallax', type: 'Movie', name: 'The Parallax View', properties: { year: 1974 } }]
+  ]);
+  let traversalOptions = null;
+  const graphStore = {
+    async getNode(id) { return nodes.get(id) || null; },
+    async traverse(startId, options) {
+      assert.equal(startId, 'movie:conversation');
+      traversalOptions = options;
+      return [
+        { from: 'movie:conversation', to: 'theme:surveillance', type: 'HAS_THEME' },
+        { from: 'theme:surveillance', to: 'movie:parallax', type: 'RELATED_TO' }
+      ];
+    }
+  };
+  const orchestrator = createLiveOrchestrator({
+    graphStore,
+    deterministicSearch: async () => ({ parsed: {}, results: [] })
+  });
+
+  const result = await orchestrator.search({
+    query: 'movies like The Conversation with surveillance themes',
+    parsedIntent: {
+      kind: 'discovery',
+      similarityAnchor: 'movie:conversation',
+      concepts: ['similarity', 'surveillance']
+    }
+  });
+
+  assert.deepEqual(traversalOptions, { maxDepth: 3, maxResults: 40 });
+  assert.equal(result.reasoningMode, 'graph');
+  assert.deepEqual(result.results.map(movie => movie.title), ['The Conversation', 'The Parallax View']);
+  assert.equal(result.evidence.relations.length, 2);
+});
+
+test('graph failure falls back to deterministic search without failing the request', async () => {
+  let fallbackCalls = 0;
+  const orchestrator = createLiveOrchestrator({
+    graphStore: {
+      async getNode() { return { id: 'movie:conversation', type: 'Movie', name: 'The Conversation' }; },
+      async traverse() { throw new Error('db unavailable'); }
+    },
+    deterministicSearch: async () => {
+      fallbackCalls += 1;
+      return { parsed: { kind: 'discovery' }, results: [{ id: 'movie:heat', title: 'Heat', year: 1995 }] };
+    }
+  });
+
+  const result = await orchestrator.search({
+    query: 'movies like The Conversation',
+    parsedIntent: { kind: 'discovery', similarityAnchor: 'movie:conversation', concepts: ['similarity'] }
+  });
+
+  assert.equal(fallbackCalls, 1);
+  assert.equal(result.results[0].title, 'Heat');
+  assert.equal(result.reasoningMode, 'deterministic');
 });
