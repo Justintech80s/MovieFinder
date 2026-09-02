@@ -6,6 +6,7 @@ import { rankResults } from '../lib/search/rank.js';
 import { runPersonFilmographySearch } from '../lib/search/person-search.js';
 import { matchesHardConstraints } from '../lib/search/constraints.js';
 import { createLiveOrchestrator } from '../lib/search/live-orchestrator.js';
+import { createSupabaseLiveGraphStore } from '../lib/search/supabase-live-graph-store.js';
 import { createProductionModelRouter } from '../lib/ai/provider-registry.js';
 import { resolveAnalyticsIdentity } from '../lib/analytics/identity.js';
 import { createAnalyticsStore } from '../lib/analytics/store.js';
@@ -119,10 +120,16 @@ function productionModels(env=process.env){
   };
 }
 
-function buildDefaultLiveOrchestrator({graphStore=null,modelRouter=null,env=process.env}={}){
+function buildDefaultLiveOrchestrator({
+  graphStore=null,
+  graphStoreFactory=createSupabaseLiveGraphStore,
+  modelRouter=null,
+  env=process.env
+}={}){
   const router=modelRouter||createProductionModelRouter({env,models:productionModels(env)});
+  const liveGraphStore=graphStore||(typeof graphStoreFactory==='function'?graphStoreFactory({env}):null);
   return createLiveOrchestrator({
-    graphStore,
+    graphStore:liveGraphStore,
     modelRouter:router,
     deterministicSearch:deterministicApplicationSearch,
     lookupAvailability:(movie,parsedIntent)=>availabilityForCredit(movie,parsedIntent)
@@ -136,12 +143,13 @@ export function createSearchHandler({
   rateLimiter=createMemoryRateLimiter(),
   liveOrchestrator=null,
   graphStore=null,
+  graphStoreFactory=createSupabaseLiveGraphStore,
   modelRouter=null,
   env=process.env,
   now=()=>new Date(),
   logger=console
 }={}){
-  const orchestrator=liveOrchestrator||buildDefaultLiveOrchestrator({graphStore,modelRouter,env});
+  const orchestrator=liveOrchestrator||buildDefaultLiveOrchestrator({graphStore,graphStoreFactory,modelRouter,env});
 
   return async function handler(req,res){
     let q='';
