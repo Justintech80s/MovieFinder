@@ -5,6 +5,8 @@ import { extractCinemaConcepts } from '../lib/search/cinema-graph.js';
 import { rankResults } from '../lib/search/rank.js';
 import { runPersonFilmographySearch } from '../lib/search/person-search.js';
 import { matchesHardConstraints } from '../lib/search/constraints.js';
+import { createLiveOrchestrator } from '../lib/search/live-orchestrator.js';
+import { createProductionModelRouter } from '../lib/ai/provider-registry.js';
 import { resolveAnalyticsIdentity } from '../lib/analytics/identity.js';
 import { createAnalyticsStore } from '../lib/analytics/store.js';
 import { buildSearchEvent, recordEventBestEffort } from '../lib/analytics/events.js';
@@ -72,7 +74,60 @@ async function availabilityForCredit(credit,intent){
   return {...movie,offers:matching,streamingTimeline:matching.map(o=>o.timeline).filter(Boolean),best:bestOffer(matching),freeAvailable:matching.some(o=>['FREE','ADS'].includes(o.type)),personCredit:credit,dataConfidence:.91};
 }
 
+async function deterministicApplicationSearch({query='',parsedIntent={}}={}){
+  const parsed={...parsedIntent};
+
+  if(parsed.kind==='person-filmography'){
+    const personSearch=await runPersonFilmographySearch(parsed,{resolveCredits:resolvePersonCredits,lookupAvailability:credit=>availabilityForCredit(credit,parsed),rank:rankResults,availabilityLimit:60,concurrency:6});
+    if(!personSearch.person){
+      return {parsed,filmography:[],results:[],availabilitySummary:personSearch.availabilitySummary,dataQuality:{confidence:.2}};
+    }
+    return {
+      parsed:{...parsed,person:personSearch.person},
+      filmography:personSearch.filmography,
+      results:personSearch.results,
+      availabilitySummary:personSearch.availabilitySummary,
+      dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed'}
+    };
+  }
+
+  const title=catalogTitle(query);
+  parsed.titleQuery=title||null;
+  const nodes=await jwSearch(title||query,80);
+  let results=nodes.map(mapNode);
+  if(parsed.provider||parsed.freeOnly||parsed.rentOnly||parsed.buyOnly){
+    results=results.map(movie=>{
+      const offers=filterOffers(movie.offers,parsed);
+      return {...movie,offers,streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),best:bestOffer(offers),freeAvailable:offers.some(o=>['FREE','ADS'].includes(o.type))};
+    }).filter(movie=>movie.offers.length);
+  } else {
+    results=results.map(movie=>({...movie,best:bestOffer(movie.offers),freeAvailable:movie.offers.some(o=>['FREE','ADS'].includes(o.type))}));
+  }
+  results=results.filter(movie=>matchesHardConstraints(movie,parsed));
+  results=rankResults(results,parsed).slice(0,40);
+  return {parsed,results};
+}
+
 function availabilityFailure(error){return /^availability source\b/i.test(String(error?.message||error||''));}
+
+function productionModels(env=process.env){
+  return {
+    openai:env.OPENAI_MODEL,
+    anthropic:env.ANTHROPIC_MODEL,
+    gemini:env.GEMINI_MODEL,
+    xai:env.XAI_MODEL
+  };
+}
+
+function buildDefaultLiveOrchestrator({graphStore=null,modelRouter=null,env=process.env}={}){
+  const router=modelRouter||createProductionModelRouter({env,models:productionModels(env)});
+  return createLiveOrchestrator({
+    graphStore,
+    modelRouter:router,
+    deterministicSearch:deterministicApplicationSearch,
+    lookupAvailability:(movie,parsedIntent)=>availabilityForCredit(movie,parsedIntent)
+  });
+}
 
 export function createSearchHandler({
   analyticsStore=createAnalyticsStore(),
@@ -80,9 +135,14 @@ export function createSearchHandler({
   outboundSecret=process.env.OUTBOUND_LINK_SECRET,
   rateLimiter=createMemoryRateLimiter(),
   liveOrchestrator=null,
+  graphStore=null,
+  modelRouter=null,
+  env=process.env,
   now=()=>new Date(),
   logger=console
 }={}){
+  const orchestrator=liveOrchestrator||buildDefaultLiveOrchestrator({graphStore,modelRouter,env});
+
   return async function handler(req,res){
     let q='';
     let parsed=null;
@@ -115,7 +175,7 @@ export function createSearchHandler({
       return recordEventBestEffort({store:analyticsStore,event,logger});
     }
 
-    function trackedResults(results){
+    function trackedResults(results=[]){
       if(!outboundSecret) return results;
       const linkNow=now().getTime();
       return results.map(movie=>trackMovieOfferUrls(movie,outboundSecret,{nowMs:linkNow}));
@@ -126,43 +186,18 @@ export function createSearchHandler({
       parsed=parseIntent(q);
       parsed.concepts=extractCinemaConcepts(q);
 
-      if(parsed.kind==='person-filmography'){
-        const personSearch=await runPersonFilmographySearch(parsed,{resolveCredits:resolvePersonCredits,lookupAvailability:credit=>availabilityForCredit(credit,parsed),rank:rankResults,availabilityLimit:60,concurrency:6});
-        if(!personSearch.person){
-          await record('search_no_results',0);
-          return res.status(200).json({parsed,filmography:[],results:[],availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:.2}});
-        }
-        const resultCount=personSearch.results.length;
-        await record(resultCount?'search_completed':'search_no_results',resultCount);
-        return res.status(200).json({parsed:{...parsed,person:personSearch.person},filmography:personSearch.filmography,results:trackedResults(personSearch.results),availabilitySummary:personSearch.availabilitySummary,liveAt:new Date().toISOString(),dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed'}});
-      }
-
-      if(typeof liveOrchestrator?.search==='function'){
-        const orchestrated=await liveOrchestrator.search({query:q,parsedIntent:parsed});
-        const results=Array.isArray(orchestrated?.results)?orchestrated.results:[];
-        await record(results.length?'search_completed':'search_no_results',results.length);
-        return res.status(200).json({
-          ...orchestrated,
-          parsed:orchestrated?.parsed||parsed,
-          results:trackedResults(results),
-          liveAt:new Date().toISOString()
-        });
-      }
-
-      const title=catalogTitle(q);
-      parsed.titleQuery=title||null;
-      const nodes=await jwSearch(title||q,80);
-      let results=nodes.map(mapNode);
-      if(parsed.provider||parsed.freeOnly||parsed.rentOnly||parsed.buyOnly){
-        results=results.map(movie=>{
-          const offers=filterOffers(movie.offers,parsed);
-          return {...movie,offers,streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),best:bestOffer(offers),freeAvailable:offers.some(o=>['FREE','ADS'].includes(o.type))};
-        }).filter(movie=>movie.offers.length);
-      } else results=results.map(movie=>({...movie,best:bestOffer(movie.offers),freeAvailable:movie.offers.some(o=>['FREE','ADS'].includes(o.type))}));
-      results=results.filter(movie=>matchesHardConstraints(movie,parsed));
-      results=rankResults(results,parsed).slice(0,40);
+      const orchestrated=await orchestrator.search({query:q,parsedIntent:parsed});
+      const resultParsed=orchestrated?.parsed||parsed;
+      parsed=resultParsed;
+      const results=Array.isArray(orchestrated?.results)?orchestrated.results:[];
       await record(results.length?'search_completed':'search_no_results',results.length);
-      return res.status(200).json({parsed,results:trackedResults(results),liveAt:new Date().toISOString()});
+
+      return res.status(200).json({
+        ...orchestrated,
+        parsed:resultParsed,
+        results:trackedResults(results),
+        liveAt:new Date().toISOString()
+      });
     }catch(error){
       const availabilityDown=availabilityFailure(error);
       await record('search_failed',0,availabilityDown?'availability_unavailable':'search_internal_error');
