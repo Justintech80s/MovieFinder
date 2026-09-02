@@ -70,6 +70,9 @@ function createHarness({ failOnce = false, checkpoint = {} } = {}) {
 
 test('seed ingestion persists seed and linked cinema entities with provenance', async () => {
   const h = createHarness();
+  const requested = [];
+  const original = h.client.fetchEntities;
+  h.client.fetchEntities = async qids => { requested.push(...qids); return original(qids); };
   const service = createWikidataIngestionService({
     client: h.client, normalizer: h.normalizer, repository: h.repository,
     now: () => new Date('2026-09-02T09:00:00Z')
@@ -81,6 +84,7 @@ test('seed ingestion persists seed and linked cinema entities with provenance', 
   assert.equal(h.storedEntities.size, 2);
   assert.equal(h.storedRelations.size, 1);
   assert.deepEqual(new Set(h.job.checkpoint.processedQids), new Set(['Q1', 'Q2']));
+  assert.deepEqual(new Set(requested), new Set(['Q1', 'Q2']));
   assert.equal(h.job.stats.entitiesStored, 2);
   assert.equal(h.job.stats.relationsStored, 1);
   assert.ok(h.sources.length >= 3);
