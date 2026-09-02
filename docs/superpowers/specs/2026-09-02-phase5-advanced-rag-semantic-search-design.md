@@ -143,13 +143,15 @@ Recommended fields:
 - `embedding_model text null`
 - `embedding_version text null`
 - `embedding vector(1536) null`
-- `fts tsvector generated/stored or maintained deterministically`
+- `fts tsvector generated always as (to_tsvector('english', coalesce(title, '') || ' ' || content)) stored`
 - `metadata jsonb not null default '{}'`
 - `embedded_at timestamptz null`
 - `created_at timestamptz not null`
 - `updated_at timestamptz not null`
 
 The initial embedding contract uses **1536 dimensions** because it fits comfortably within current pgvector `vector` HNSW limits and provides a practical production baseline. The embedding adapter remains provider-neutral at the application boundary, but any future model with a different dimension requires an explicit migration and corpus re-embedding rather than silently mixing dimensions.
+
+Phase 5 initially indexes English semantic documents only. Additional language configurations require an explicit later schema/retrieval design rather than silently applying the English text-search configuration to other languages.
 
 ### Document types
 
@@ -283,7 +285,7 @@ If selective relational filtering produces insufficient HNSW recall at scale, ev
 
 Run bounded lexical and semantic searches in parallel for semantic queries.
 
-Recommended initial limits:
+Initial limits:
 - keyword candidates: 30
 - semantic candidates: 30
 - fused candidates before entity resolution: maximum 40
@@ -291,14 +293,14 @@ Recommended initial limits:
 
 Combine rankings using **Reciprocal Rank Fusion (RRF)** instead of directly comparing incompatible full-text and vector similarity scores.
 
-Conceptual score:
+Initial score:
 
 ```text
-RRF(doc) = lexical_weight / (k + lexical_rank)
-         + semantic_weight / (k + semantic_rank)
+RRF(doc) = 1 / (60 + lexical_rank)
+         + 1 / (60 + semantic_rank)
 ```
 
-Start with equal lexical/semantic weight and a documented smoothing constant. Tune only through evaluation data.
+A document absent from one result list contributes zero for that list. The initial smoothing constant is `60` and lexical/semantic weights are equal. Tune them only through evaluation data.
 
 Exact title/entity matches receive a deterministic boost outside the semantic score where appropriate.
 
