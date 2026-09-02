@@ -48,6 +48,18 @@ test('normalizer maps supported cinema claims deterministically with provenance'
     result.relations.map(relation => relation.relationType).sort(),
     ['ACTED_IN', 'DIRECTED', 'FROM_COUNTRY', 'HAS_GENRE', 'PRODUCED', 'SHOT_BY', 'WROTE'].sort()
   );
+
+  const acted = result.relations.find(relation => relation.relationType === 'ACTED_IN');
+  assert.equal(acted.fromCanonicalKey, 'wikidata:Q200');
+  assert.equal(acted.toCanonicalKey, 'wikidata:Q100');
+
+  const directed = result.relations.find(relation => relation.relationType === 'DIRECTED');
+  assert.equal(directed.fromCanonicalKey, 'wikidata:Q300');
+  assert.equal(directed.toCanonicalKey, 'wikidata:Q100');
+
+  const genre = result.relations.find(relation => relation.relationType === 'HAS_GENRE');
+  assert.equal(genre.fromCanonicalKey, 'wikidata:Q100');
+  assert.equal(genre.toCanonicalKey, 'wikidata:Q700');
   assert.ok(result.skipped >= 1);
 });
 
