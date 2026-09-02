@@ -51,6 +51,19 @@ test('search rejects oversized queries before upstream network work', async()=>{
   } finally { globalThis.fetch=previousFetch; }
 });
 
+test('oversized queries are rejected before injected live orchestration', async()=>{
+  let orchestratorCalls=0;
+  const handler=createSearchHandler({
+    analyticsStore:quietStore(),
+    liveOrchestrator:{async search(){orchestratorCalls++;throw new Error('orchestrator should not run');}}
+  });
+  const res=responseRecorder();
+  await handler(request({q:'x'.repeat(1001)}),res);
+  assert.equal(res.statusCode,400);
+  assert.equal(res.body.code,'INVALID_QUERY');
+  assert.equal(orchestratorCalls,0);
+});
+
 test('search applies defensive API response headers', async()=>{
   const previousFetch=globalThis.fetch;
   globalThis.fetch=async()=>({ok:true,status:200,json:async()=>({data:{popularTitles:{edges:[]}}})});
