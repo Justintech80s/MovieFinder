@@ -1,6 +1,7 @@
 import { createAnalyticsStore } from '../lib/analytics/store.js';
 import { getWeeklyWindows, aggregateWeeklyReport, buildObservations } from '../lib/analytics/report.js';
 import { renderWeeklyEmail, sendWeeklyEmail } from '../lib/analytics/email.js';
+import { applyApiSecurityHeaders } from '../lib/security/api-security.js';
 
 const REPORT_TIME_ZONE='America/New_York';
 const RAW_RETENTION_MS=90*24*60*60*1000;
@@ -34,6 +35,13 @@ export function createWeeklyReportHandler({
   logger=console
 }={}){
   return async function handler(req,res){
+    applyApiSecurityHeaders(res);
+    const method=String(req?.method||'GET').toUpperCase();
+    if(method!=='GET'){
+      res.setHeader?.('Allow','GET');
+      return res.status(405).json({success:false,error:'Method not allowed',code:'METHOD_NOT_ALLOWED'});
+    }
+
     if(!env?.CRON_SECRET||req?.headers?.authorization!==`Bearer ${env.CRON_SECRET}`){
       return res.status(401).json({success:false});
     }

@@ -9,16 +9,27 @@ import { resolveAnalyticsIdentity } from '../lib/analytics/identity.js';
 import { createAnalyticsStore } from '../lib/analytics/store.js';
 import { buildSearchEvent, recordEventBestEffort } from '../lib/analytics/events.js';
 import { trackMovieOfferUrls } from '../lib/analytics/outbound.js';
+import { applyApiSecurityHeaders, createMemoryRateLimiter, requestClientKey, validateSearchQuery } from '../lib/security/api-security.js';
 
 const JW='https://apis.justwatch.com/graphql';
+const JUSTWATCH_TIMEOUT_MS=8_000;
 export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$language:Language!,$first:Int!,$search:String!){popularTitles(country:$country,first:$first,filter:{searchQuery:$search}){edges{node{id objectType content(country:$country,language:$language){title shortDescription originalReleaseYear fullPath posterUrl genres{shortName} scoring{imdbScore imdbVotes tomatoMeter}} offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName}}}}}}`;
 
 async function jwSearch(search,first=60){
-  const r=await fetch(JW,{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({query:JUSTWATCH_QUERY,variables:{country:'US',language:'en',first,search}})});
-  if(!r.ok) throw new Error(`availability source ${r.status}`);
-  const d=await r.json();
-  if(d.errors?.length) throw new Error(`availability source error: ${d.errors[0].message||'GraphQL error'}`);
-  return (d.data?.popularTitles?.edges||[]).map(e=>e.node);
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),JUSTWATCH_TIMEOUT_MS);
+  try{
+    const r=await fetch(JW,{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({query:JUSTWATCH_QUERY,variables:{country:'US',language:'en',first,search}}),signal:controller.signal});
+    if(!r.ok) throw new Error(`availability source ${r.status}`);
+    const d=await r.json();
+    if(d.errors?.length) throw new Error('availability source GraphQL error');
+    return (d.data?.popularTitles?.edges||[]).map(e=>e.node);
+  }catch(error){
+    if(error?.name==='AbortError') throw new Error('availability source timeout');
+    throw error;
+  }finally{
+    clearTimeout(timeout);
+  }
 }
 
 function poster(u){return u?`https://images.justwatch.com${u.replace('{profile}','s332')}`:null;}
@@ -67,6 +78,7 @@ export function createSearchHandler({
   analyticsStore=createAnalyticsStore(),
   analyticsSecret=process.env.ANALYTICS_ID_SECRET,
   outboundSecret=process.env.OUTBOUND_LINK_SECRET,
+  rateLimiter=createMemoryRateLimiter(),
   now=()=>new Date(),
   logger=console
 }={}){
@@ -74,6 +86,27 @@ export function createSearchHandler({
     let q='';
     let parsed=null;
     let identity=null;
+
+    applyApiSecurityHeaders(res);
+
+    const method=String(req?.method||'GET').toUpperCase();
+    if(method!=='GET'){
+      res.setHeader?.('Allow','GET');
+      return res.status(405).json({error:'Method not allowed',code:'METHOD_NOT_ALLOWED'});
+    }
+
+    const validation=validateSearchQuery(req?.query?.q);
+    if(!validation.ok){
+      const missing=validation.reason==='missing';
+      return res.status(400).json({error:missing?'Missing q':'Invalid search query',code:missing?'MISSING_QUERY':'INVALID_QUERY'});
+    }
+    q=validation.query;
+
+    const limitResult=await rateLimiter?.consume?.(requestClientKey(req));
+    if(limitResult&&limitResult.allowed===false){
+      if(limitResult.retryAfterSeconds) res.setHeader?.('Retry-After',String(limitResult.retryAfterSeconds));
+      return res.status(429).json({error:'Too many requests',code:'RATE_LIMITED'});
+    }
 
     async function record(type,resultCount=0,errorCode=null){
       if(!identity) return false;
@@ -88,8 +121,6 @@ export function createSearchHandler({
     }
 
     try{
-      q=String(req.query?.q||'').trim();
-      if(!q) return res.status(400).json({error:'Missing q'});
       identity=resolveAnalyticsIdentity(req,res,{secret:analyticsSecret});
       parsed=parseIntent(q);
       parsed.concepts=extractCinemaConcepts(q);
@@ -122,8 +153,9 @@ export function createSearchHandler({
     }catch(error){
       const availabilityDown=availabilityFailure(error);
       await record('search_failed',0,availabilityDown?'availability_unavailable':'search_internal_error');
-      if(availabilityDown) return res.status(503).json({error:'Streaming availability temporarily unavailable',code:'AVAILABILITY_UNAVAILABLE',detail:String(error?.message||error)});
-      return res.status(500).json({error:'MovieFinder search failed',detail:String(error?.message||error)});
+      logger?.warn?.('MovieFinder search failed',{code:availabilityDown?'availability_unavailable':'search_internal_error'});
+      if(availabilityDown) return res.status(503).json({error:'Streaming availability temporarily unavailable',code:'AVAILABILITY_UNAVAILABLE'});
+      return res.status(500).json({error:'MovieFinder search failed',code:'SEARCH_INTERNAL_ERROR'});
     }
   };
 }
