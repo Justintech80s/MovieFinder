@@ -103,6 +103,16 @@ test('repository upserts entities, relations, provenance, and resumes jobs idemp
   assert.equal(resumed.id, first.id);
 });
 
+test('repository resolves canonical graph keys even when they do not contain a namespace separator', async () => {
+  const db = createMemoryDb();
+  const repo = createCinemaGraphRepository({ db });
+
+  const saved = await repo.upsertEntity({ canonicalKey: 'A', entityType: 'Person', name: 'Short Key', properties: {} });
+
+  assert.equal((await repo.getEntity('A'))?.id, saved.id);
+  assert.equal((await repo.getEntity(saved.id))?.canonical_key, 'A');
+});
+
 test('repository mirrors only legacy-compatible entities and credits', async () => {
   const db = createMemoryDb();
   const repo = createCinemaGraphRepository({ db });
