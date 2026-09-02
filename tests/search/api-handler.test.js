@@ -148,3 +148,55 @@ test('API delegates validated searches to the live orchestrator while preserving
   assert.ok(res.body.liveAt);
   assert.equal(res.headers['x-content-type-options'],'nosniff');
 });
+
+test('default API resolves a movies-like query through the configured graph store factory', async () => {
+  let factoryCalls=0;
+  let findCalls=0;
+  let traverseCalls=0;
+  const graphStore={
+    async findMovieByTitle(title){
+      findCalls+=1;
+      assert.equal(title,'The Conversation');
+      return {id:'movie:conversation',type:'Movie',name:'The Conversation',properties:{year:1974}};
+    },
+    async getNode(id){
+      assert.equal(id,'movie:conversation');
+      return {id:'movie:conversation',type:'Movie',name:'The Conversation',properties:{year:1974}};
+    },
+    async traverse(startId){
+      traverseCalls+=1;
+      assert.equal(startId,'movie:conversation');
+      return [];
+    }
+  };
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async(_url,options)=>{
+    const body=JSON.parse(options.body);
+    assert.equal(body.variables.search,'The Conversation');
+    return {ok:true,status:200,json:async()=>({data:{popularTitles:{edges:[
+      {node:jwNode({id:'the-conversation',title:'The Conversation',year:1974,provider:'Max'})}
+    ]}}})};
+  };
+  try {
+    const searchHandler=createSearchHandler({
+      graphStoreFactory(){factoryCalls+=1;return graphStore;},
+      analyticsStore:{enabled:false,insertEvent:async()=>false},
+      rateLimiter:{consume:()=>({allowed:true})},
+      modelRouter:{async run(){throw new Error('AI should not be required for graph verification');}},
+      logger:{warn(){},error(){}}
+    });
+    const res=responseRecorder();
+
+    await searchHandler({method:'GET',query:{q:'movies like The Conversation with surveillance themes'},headers:{}},res);
+
+    assert.equal(res.statusCode,200);
+    assert.equal(factoryCalls,1);
+    assert.equal(findCalls,1);
+    assert.equal(traverseCalls,1);
+    assert.equal(res.body.parsed.similarityTitle,'The Conversation');
+    assert.equal(res.body.reasoningMode,'graph');
+    assert.equal(res.body.results[0].title,'The Conversation');
+  } finally {
+    globalThis.fetch=previousFetch;
+  }
+});
