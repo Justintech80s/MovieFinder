@@ -9,7 +9,7 @@ function fixtureEntity(id, claims = {}) {
 
 const itemClaim = qid => [{ mainsnak: { datavalue: { value: { id: qid } } } }];
 
-function createHarness({ failOnce = false, checkpoint = {} } = {}) {
+function createHarness({ failOnce = false, checkpoint = {}, multiLinked = false } = {}) {
   const storedEntities = new Map();
   const storedRelations = new Map();
   const sources = [];
@@ -21,8 +21,14 @@ function createHarness({ failOnce = false, checkpoint = {} } = {}) {
     async fetchEntities(qids) {
       const entities = {};
       for (const qid of qids) {
-        if (qid === 'Q1') entities.Q1 = fixtureEntity('Q1', { P31: itemClaim('Q11424'), P161: itemClaim('Q2') });
+        if (qid === 'Q1') {
+          entities.Q1 = fixtureEntity('Q1', {
+            P31: itemClaim('Q11424'),
+            P161: multiLinked ? [...itemClaim('Q2'), ...itemClaim('Q3')] : itemClaim('Q2')
+          });
+        }
         if (qid === 'Q2') entities.Q2 = fixtureEntity('Q2', { P31: itemClaim('Q5') });
+        if (qid === 'Q3') entities.Q3 = fixtureEntity('Q3', { P31: itemClaim('Q5') });
       }
       return { entities };
     }
@@ -36,11 +42,21 @@ function createHarness({ failOnce = false, checkpoint = {} } = {}) {
       properties: {},
       source: { source: 'wikidata', externalId: entity.id, retrievedAt }
     }));
-    const relations = entities.Q1 ? [{
-      fromCanonicalKey: 'wikidata:Q2', toCanonicalKey: 'wikidata:Q1', relationType: 'ACTED_IN',
-      properties: {}, confidence: 1,
-      source: { source: 'wikidata', externalId: 'Q1', retrievedAt }
-    }] : [];
+    const relations = [];
+    if (entities.Q1) {
+      relations.push({
+        fromCanonicalKey: 'wikidata:Q2', toCanonicalKey: 'wikidata:Q1', relationType: 'ACTED_IN',
+        properties: {}, confidence: 1,
+        source: { source: 'wikidata', externalId: 'Q1', retrievedAt }
+      });
+      if (multiLinked) {
+        relations.push({
+          fromCanonicalKey: 'wikidata:Q3', toCanonicalKey: 'wikidata:Q1', relationType: 'ACTED_IN',
+          properties: {}, confidence: 1,
+          source: { source: 'wikidata', externalId: 'Q1', retrievedAt }
+        });
+      }
+    }
     return { entities: normalized, relations, skipped: 0 };
   };
 
@@ -91,15 +107,32 @@ test('seed ingestion persists seed and linked cinema entities with provenance', 
   assert.ok(h.mirrors.some(entry => entry[1] === 'ACTED_IN'));
 });
 
-test('seed ingestion resumes without reprocessing checkpointed QIDs', async () => {
-  const h = createHarness({ checkpoint: { processedQids: ['Q1'] } });
+test('seed ingestion resumes pending QIDs without reprocessing checkpointed QIDs', async () => {
+  const h = createHarness({ checkpoint: { processedQids: ['Q1'], pendingQids: ['Q2'] } });
   const requested = [];
   const original = h.client.fetchEntities;
-  h.client.fetchEntities = async qids => { requested.push(...qids); return original(qids); };
+  h.client.fetchEntities = async qids => { requested.push([...qids]); return original(qids); };
   const service = createWikidataIngestionService({ client: h.client, normalizer: h.normalizer, repository: h.repository });
 
   await service.ingestWikidataSeed('Q1');
-  assert.ok(!requested.includes('Q1'));
+
+  assert.ok(requested.some(qids => qids.includes('Q2')));
+  assert.ok(requested.every(qids => !qids.includes('Q1')));
+  assert.deepEqual(h.job.checkpoint.pendingQids, []);
+});
+
+test('seed ingestion batches missing linked relation endpoints instead of N+1 singleton fetches', async () => {
+  const h = createHarness({ multiLinked: true });
+  const calls = [];
+  const original = h.client.fetchEntities;
+  h.client.fetchEntities = async qids => { calls.push([...qids]); return original(qids); };
+  const service = createWikidataIngestionService({ client: h.client, normalizer: h.normalizer, repository: h.repository });
+
+  await service.ingestWikidataSeed('Q1', { maxLinkedEntities: 10, batchSize: 10 });
+
+  assert.ok(calls.some(qids => qids.length === 2 && qids.includes('Q2') && qids.includes('Q3')));
+  assert.ok(!calls.some(qids => qids.length === 1 && (qids[0] === 'Q2' || qids[0] === 'Q3')));
+  assert.deepEqual(new Set(h.job.checkpoint.processedQids), new Set(['Q1', 'Q2', 'Q3']));
 });
 
 test('seed ingestion records failure without advancing checkpoint for failed batch', async () => {
