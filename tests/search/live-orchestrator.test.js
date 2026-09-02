@@ -305,3 +305,70 @@ test('AI provider failure preserves verified graph results without propagating a
   assert.equal(result.reasoningMode, 'graph');
   assert.equal('ai' in result, false);
 });
+
+test('complex live cinema fixture combines graph relationships, current availability, and grounded AI reasoning', async () => {
+  const nodes = new Map([
+    ['movie:conversation', { id: 'movie:conversation', type: 'Movie', name: 'The Conversation', properties: { year: 1974 } }],
+    ['theme:surveillance', { id: 'theme:surveillance', type: 'Theme', name: 'Political Surveillance' }],
+    ['movie:parallax', { id: 'movie:parallax', type: 'Movie', name: 'The Parallax View', properties: { year: 1974 } }],
+    ['movie:condor', { id: 'movie:condor', type: 'Movie', name: 'Three Days of the Condor', properties: { year: 1975 } }]
+  ]);
+  let capturedEvidence = null;
+
+  const orchestrator = createLiveOrchestrator({
+    graphStore: {
+      async getNode(id) { return nodes.get(id) || null; },
+      async traverse() {
+        return [
+          { from: 'movie:conversation', to: 'theme:surveillance', type: 'HAS_THEME' },
+          { from: 'theme:surveillance', to: 'movie:parallax', type: 'RELATED_TO' },
+          { from: 'theme:surveillance', to: 'movie:condor', type: 'RELATED_TO' }
+        ];
+      }
+    },
+    lookupAvailability: async movie => {
+      const checkedAt = '2026-09-02T18:00:00.000Z';
+      if (movie.id === 'movie:condor') {
+        return { ...movie, checkedAt, offers: [{ provider: 'Netflix', type: 'FLATRATE', checkedAt }] };
+      }
+      return { ...movie, checkedAt, offers: [{ provider: 'Max', type: 'FLATRATE', checkedAt }] };
+    },
+    modelRouter: {
+      async run(_capability, input) {
+        capturedEvidence = input.evidence;
+        const titles = input.evidence.movies.map(movie => movie.title);
+        return {
+          provider: 'fixture-ai',
+          output: {
+            model: 'fixture-model',
+            content: `${titles.join(' and ')} are the verified currently-streaming surveillance matches.`
+          }
+        };
+      }
+    },
+    deterministicSearch: async () => {
+      throw new Error('complex fixture should not fall back to deterministic search');
+    }
+  });
+
+  const result = await orchestrator.search({
+    query: 'movies like The Conversation with political surveillance themes that are streaming now on Max',
+    parsedIntent: {
+      kind: 'discovery',
+      similarityAnchor: 'movie:conversation',
+      concepts: ['similarity', 'surveillance'],
+      provider: 'Max'
+    }
+  });
+
+  assert.equal(result.reasoningMode, 'graph+ai');
+  assert.deepEqual(result.results.map(movie => movie.title), ['The Conversation', 'The Parallax View']);
+  assert.deepEqual(result.results.map(movie => movie.offers[0].provider), ['Max', 'Max']);
+  assert.deepEqual(result.evidence.movies.map(movie => movie.title), ['The Conversation', 'The Parallax View']);
+  assert.equal(result.evidence.currentAvailability.length, 2);
+  assert.equal(result.evidence.currentAvailability.every(offer => offer.provider === 'Max'), true);
+  assert.deepEqual(capturedEvidence, result.evidence);
+  assert.equal(result.answer, 'The Conversation and The Parallax View are the verified currently-streaming surveillance matches.');
+  assert.equal(result.answer.includes('Three Days of the Condor'), false);
+  assert.deepEqual(result.ai, { provider: 'fixture-ai', model: 'fixture-model' });
+});
