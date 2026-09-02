@@ -30,7 +30,7 @@ function createMemoryDb() {
     let payload;
     let mode = 'select';
     return {
-      select() { mode = 'select'; return this; },
+      select() { return this; },
       eq(key, value) { filters.push([key, value]); return this; },
       maybeSingle() {
         const data = table(name).find(row => filters.every(([k,v]) => row[k] === v)) || null;
@@ -59,16 +59,17 @@ function createMemoryDb() {
           }
           return Promise.resolve({ data: saved, error: null });
         }
+        if (mode === 'update') {
+          const rows = table(name).filter(row => filters.every(([k,v]) => row[k] === v));
+          rows.forEach(row => Object.assign(row, payload));
+          return Promise.resolve({ data: rows[0] || null, error: null });
+        }
         const data = table(name).find(row => filters.every(([k,v]) => row[k] === v)) || null;
         return Promise.resolve({ data, error: null });
       },
       upsert(value) { mode = 'upsert'; payload = value; return this; },
       insert(value) { mode = 'upsert'; payload = value; return this; },
-      update(value) {
-        const rows = table(name).filter(row => filters.every(([k,v]) => row[k] === v));
-        rows.forEach(row => Object.assign(row, value));
-        return Promise.resolve({ data: rows, error: null });
-      },
+      update(value) { mode = 'update'; payload = value; return this; },
       then(resolve) {
         const data = table(name).filter(row => filters.every(([k,v]) => row[k] === v));
         return resolve({ data, error: null });
@@ -84,7 +85,7 @@ test('repository upserts entities, relations, provenance, and resumes jobs idemp
   const repo = createCinemaGraphRepository({ db });
 
   const person = await repo.upsertEntity({ canonicalKey: 'wikidata:Q1', entityType: 'Person', name: 'Person One', properties: {} });
-  const film = await repo.upsertEntity({ canonicalKey: 'wikidata:Q2', entityType: 'Movie', name: 'Film Two', properties: { releaseYear: 1999, imdbId: 'tt123' } });
+  await repo.upsertEntity({ canonicalKey: 'wikidata:Q2', entityType: 'Movie', name: 'Film Two', properties: { releaseYear: 1999, imdbId: 'tt123' } });
   const personAgain = await repo.upsertEntity({ canonicalKey: 'wikidata:Q1', entityType: 'Person', name: 'Person One Updated', properties: {} });
   assert.equal(person.id, personAgain.id);
 
