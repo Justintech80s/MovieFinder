@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "feature/cinema-intelligence-platform": false
+    }
+  },
   "crons": [
     {"path":"/api/weekly-report","schedule":"0 12 * * 1"},
     {"path":"/api/weekly-report","schedule":"0 13 * * 1"},
