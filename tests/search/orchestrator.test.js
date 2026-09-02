@@ -3,29 +3,10 @@ import assert from 'node:assert/strict';
 import { createSearchOrchestrator } from '../../lib/search/orchestrator.js';
 
 test('orchestrator returns compatible results plus intelligence metadata', async () => {
-  const orchestrator = createSearchOrchestrator({
-    parseIntent: query => ({ raw: query, people: ['Gene Hackman'], genres: ['thriller'] }),
-    findFilmography: async () => [{ id: 'movie:conversation', title: 'The Conversation', year: 1974 }],
-    checkAvailability: async movie => ({ ...movie, availability: { provider: 'Example', region: 'US' } }),
-    rankResults: items => items,
-    relationEvidence: movie => [{ source: 'cinema-graph', kind: 'relation', claim: 'actor credit', value: movie.id, quality: 1 }],
-    now: () => new Date('2026-09-02T12:00:00Z')
-  });
-
-  const response = await orchestrator.search('Gene Hackman thrillers streaming', { region: 'US' });
-  assert.equal(response.results[0].title, 'The Conversation');
-  assert.ok(Array.isArray(response.results[0].evidence));
-  assert.equal(response.results[0].confidence, 1);
-  assert.equal(response.results[0].verification.availability.state, 'available');
-  assert.equal(response.plan.version, 1);
+  const orchestrator = createSearchOrchestrator({ parseIntent: query => ({ raw: query, people: ['Gene Hackman'], genres: ['thriller'] }), findFilmography: async () => [{ id: 'movie:conversation', title: 'The Conversation', year: 1974 }], checkAvailability: async movie => ({ ...movie, availability: { provider: 'Example', region: 'US' } }), rankResults: items => items, relationEvidence: movie => [{ source: 'cinema-graph', kind: 'relation', claim: 'actor credit', value: movie.id, quality: 1 }], now: () => new Date('2026-09-02T12:00:00Z') });
+  const response = await orchestrator.search('Gene Hackman thrillers streaming', { region: 'US' }); assert.equal(response.results[0].title, 'The Conversation'); assert.ok(Array.isArray(response.results[0].evidence)); assert.equal(response.results[0].confidence, 1); assert.equal(response.results[0].verification.availability.state, 'available'); assert.equal(response.plan.version, 1);
 });
-
-test('orchestrator degrades to unknown when availability lookup is absent', async () => {
-  const orchestrator = createSearchOrchestrator({
-    parseIntent: query => ({ raw: query }),
-    findFilmography: async () => [{ title: 'Example' }],
-    rankResults: items => items
-  });
-  const response = await orchestrator.search('Example streaming', { region: 'US' });
-  assert.equal(response.results[0].verification.availability.state, 'unknown');
-});
+test('orchestrator degrades to unknown when availability lookup is absent', async () => { const orchestrator = createSearchOrchestrator({ parseIntent: query => ({ raw: query }), findFilmography: async () => [{ title: 'Example' }], rankResults: items => items }); const response = await orchestrator.search('Example streaming', { region: 'US' }); assert.equal(response.results[0].verification.availability.state, 'unknown'); });
+test('orchestrator keeps deterministic results when AI enrichment is unavailable', async () => { const aiEnrichment = { async synthesize() { throw Object.assign(new Error('no models'), { code: 'MODEL_PROVIDER_UNAVAILABLE' }); } }; const orchestrator = createSearchOrchestrator({ parseIntent: query => ({ raw: query }), findFilmography: async () => [{ id: 'movie:example', title: 'Verified Example' }], rankResults: items => items, relationEvidence: movie => [{ source: 'cinema-graph', claim: movie.id, quality: 1 }], aiEnrichment }); const response = await orchestrator.search('Verified Example'); assert.equal(response.results[0].title, 'Verified Example'); assert.equal(response.results[0].confidence, 1); assert.equal(response.ai, null); });
+test('orchestrator accepts safe AI enrichment without replacing verified result fields', async () => { const aiEnrichment = { async synthesize(results) { return { results: results.map(result => ({ ...result, ai: { explanation: 'Context only' } })), ai: { provider: 'openai', content: 'Context only' } }; } }; const orchestrator = createSearchOrchestrator({ parseIntent: query => ({ raw: query }), findFilmography: async () => [{ id: 'movie:example', title: 'Verified Example' }], rankResults: items => items, relationEvidence: movie => [{ source: 'cinema-graph', claim: movie.id, quality: 1 }], aiEnrichment }); const response = await orchestrator.search('Verified Example'); assert.equal(response.results[0].title, 'Verified Example'); assert.equal(response.results[0].ai.explanation, 'Context only'); assert.equal(response.ai.provider, 'openai'); });
+test('orchestrator enforces deterministic authority even for a malicious enrichment implementation', async () => { const aiEnrichment = { async synthesize() { return { results: [{ id: 'evil', title: 'Wrong', confidence: 0, availability: { provider: 'Fake' }, ai: { explanation: 'Untrusted mismatched context' } }], ai: { provider: 'test', content: 'context' } }; } }; const orchestrator = createSearchOrchestrator({ parseIntent: query => ({ raw: query }), findFilmography: async () => [{ id: 'movie:example', title: 'Verified Example' }], rankResults: items => items, relationEvidence: movie => [{ source: 'cinema-graph', claim: movie.id, quality: 1 }], aiEnrichment }); const response = await orchestrator.search('Verified Example'); assert.equal(response.results[0].id, 'movie:example'); assert.equal(response.results[0].title, 'Verified Example'); assert.equal(response.results[0].confidence, 1); assert.equal(response.results[0].availability, undefined); assert.equal(response.results[0].ai, undefined); });
