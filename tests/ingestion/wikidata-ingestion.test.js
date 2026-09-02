@@ -144,3 +144,20 @@ test('seed ingestion records failure without advancing checkpoint for failed bat
   assert.deepEqual(h.job.checkpoint?.processedQids || [], []);
   assert.match(h.job.error, /database unavailable/);
 });
+
+test('failed batch remains pending so a resumed ingestion can retry it', async () => {
+  const h = createHarness({ failOnce: true, checkpoint: { pendingQids: ['Q1', 'Q3'] } });
+  const service = createWikidataIngestionService({ client: h.client, normalizer: h.normalizer, repository: h.repository });
+
+  await assert.rejects(service.ingestWikidataSeed('Q1', { batchSize: 1 }), /database unavailable/);
+
+  assert.deepEqual(h.job.checkpoint.pendingQids, ['Q1', 'Q3']);
+});
+
+test('failure checkpoint errors never mask the original ingestion error', async () => {
+  const h = createHarness({ failOnce: true });
+  h.repository.updateJobCheckpoint = async () => { throw new Error('checkpoint unavailable'); };
+  const service = createWikidataIngestionService({ client: h.client, normalizer: h.normalizer, repository: h.repository });
+
+  await assert.rejects(service.ingestWikidataSeed('Q1'), /database unavailable/);
+});
