@@ -137,3 +137,41 @@ test('graph failure falls back to deterministic search without failing the reque
   assert.equal(result.results[0].title, 'Heat');
   assert.equal(result.reasoningMode, 'deterministic');
 });
+
+test('provider-constrained graph results require current matching availability before inclusion', async () => {
+  const nodes = new Map([
+    ['movie:conversation', { id: 'movie:conversation', type: 'Movie', name: 'The Conversation', properties: { year: 1974 } }],
+    ['movie:parallax', { id: 'movie:parallax', type: 'Movie', name: 'The Parallax View', properties: { year: 1974 } }]
+  ]);
+  const graphStore = {
+    async getNode(id) { return nodes.get(id) || null; },
+    async traverse() {
+      return [{ from: 'movie:conversation', to: 'movie:parallax', type: 'RELATED_TO' }];
+    }
+  };
+  const lookupAvailability = async movie => {
+    if (movie.id === 'movie:parallax') {
+      return { ...movie, offers: [{ provider: 'Netflix', type: 'FLATRATE', url: 'https://www.netflix.com/title/example' }] };
+    }
+    return { ...movie, offers: [{ provider: 'Max', type: 'FLATRATE', url: 'https://www.max.com/example' }] };
+  };
+  const orchestrator = createLiveOrchestrator({
+    graphStore,
+    lookupAvailability,
+    deterministicSearch: async () => ({ parsed: {}, results: [] })
+  });
+
+  const result = await orchestrator.search({
+    query: 'movies like The Conversation on Netflix',
+    parsedIntent: {
+      kind: 'discovery',
+      similarityAnchor: 'movie:conversation',
+      concepts: ['similarity'],
+      provider: 'Netflix'
+    }
+  });
+
+  assert.deepEqual(result.results.map(movie => movie.title), ['The Parallax View']);
+  assert.equal(result.results[0].offers[0].provider, 'Netflix');
+  assert.equal(result.evidence.currentAvailability.length, 1);
+});
