@@ -12,6 +12,31 @@ test('adds frontend-compatible priceLabel for paid and free offers', () => {
   assert.equal(free.priceLabel, 'Free');
 });
 
+test('preserves provider logo metadata for frontend offer cards', () => {
+  const [offer] = normalizeOffers([
+    {
+      package: {
+        clearName: 'Netflix',
+        icon: 'https://images.example.com/netflix-icon.png'
+      },
+      monetizationType: 'flatrate'
+    }
+  ]);
+
+  assert.equal(offer.provider, 'Netflix');
+  assert.equal(offer.providerLogo, 'https://images.example.com/netflix-icon.png');
+});
+
+test('accepts alternate upstream provider logo fields', () => {
+  const [directLogo, packageLogo] = normalizeOffers([
+    { provider: 'Max', type: 'flatrate', logo: 'https://images.example.com/max.png' },
+    { provider: 'Hulu', type: 'flatrate', package: { logo: 'https://images.example.com/hulu.png' } }
+  ]);
+
+  assert.equal(directLogo.providerLogo, 'https://images.example.com/max.png');
+  assert.equal(packageLogo.providerLogo, 'https://images.example.com/hulu.png');
+});
+
 test('normalizes current offers to NOW streaming timeline entries', () => {
   const timeline = toTimelineEntry(
     { provider:'Max', type:'FLATRATE', price:null, currency:'USD' },
