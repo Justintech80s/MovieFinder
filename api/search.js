@@ -5,6 +5,7 @@ import { extractCinemaConcepts } from '../lib/search/cinema-graph.js';
 import { rankResults } from '../lib/search/rank.js';
 import { runPersonFilmographySearch } from '../lib/search/person-search.js';
 import { matchesHardConstraints } from '../lib/search/constraints.js';
+import { shouldUseExactTitleMode, selectExactTitleResults } from '../lib/search/exact-title-results.js';
 import { createLiveOrchestrator } from '../lib/search/live-orchestrator.js';
 import { createSupabaseLiveGraphStore } from '../lib/search/supabase-live-graph-store.js';
 import { createProductionModelRouter } from '../lib/ai/provider-registry.js';
@@ -196,13 +197,21 @@ export function createSearchHandler({
 
       const orchestrated=await orchestrator.search({query:q,parsedIntent:parsed});
       const resultParsed=orchestrated?.parsed||parsed;
-      parsed=resultParsed;
-      const results=Array.isArray(orchestrated?.results)?orchestrated.results:[];
+      const resolvedTitleQuery=resultParsed?.titleQuery||null;
+      const responseTitleQuery=resolvedTitleQuery||catalogTitle(q)||null;
+      const exactTitleMode=shouldUseExactTitleMode({query:q,titleQuery:resolvedTitleQuery,parsedIntent:resultParsed});
+      const rawResults=Array.isArray(orchestrated?.results)?orchestrated.results:[];
+      const results=exactTitleMode
+        ? selectExactTitleResults(rawResults,{titleQuery:resolvedTitleQuery,yearMin:resultParsed?.yearMin,yearMax:resultParsed?.yearMax})
+        : rawResults;
+      const responseParsed={...resultParsed,titleQuery:responseTitleQuery,exactTitleMode};
+      parsed=responseParsed;
       await record(results.length?'search_completed':'search_no_results',results.length);
 
       return res.status(200).json({
         ...orchestrated,
-        parsed:resultParsed,
+        parsed:responseParsed,
+        exactTitleMode,
         results:trackedResults(results),
         liveAt:new Date().toISOString()
       });
