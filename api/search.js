@@ -197,13 +197,14 @@ export function createSearchHandler({
 
       const orchestrated=await orchestrator.search({query:q,parsedIntent:parsed});
       const resultParsed=orchestrated?.parsed||parsed;
-      const titleQuery=resultParsed?.titleQuery||catalogTitle(q)||null;
-      const exactTitleMode=shouldUseExactTitleMode({query:q,titleQuery,parsedIntent:resultParsed});
+      const resolvedTitleQuery=resultParsed?.titleQuery||null;
+      const responseTitleQuery=resolvedTitleQuery||catalogTitle(q)||null;
+      const exactTitleMode=shouldUseExactTitleMode({query:q,titleQuery:resolvedTitleQuery,parsedIntent:resultParsed});
       const rawResults=Array.isArray(orchestrated?.results)?orchestrated.results:[];
       const results=exactTitleMode
-        ? selectExactTitleResults(rawResults,{titleQuery,yearMin:resultParsed?.yearMin,yearMax:resultParsed?.yearMax})
+        ? selectExactTitleResults(rawResults,{titleQuery:resolvedTitleQuery,yearMin:resultParsed?.yearMin,yearMax:resultParsed?.yearMax})
         : rawResults;
-      const responseParsed={...resultParsed,titleQuery,exactTitleMode};
+      const responseParsed={...resultParsed,titleQuery:responseTitleQuery,exactTitleMode};
       parsed=responseParsed;
       await record(results.length?'search_completed':'search_no_results',results.length);
 
