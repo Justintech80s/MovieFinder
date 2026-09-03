@@ -11,24 +11,26 @@ test('MovieFinder ships a root homepage that connects to the search API', async 
 
 test('MovieFinder homepage includes the restored crypto receiving screen', async () => {
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/data-screen="crypto"/i);
   assert.match(html,/Bitcoin/i);
   assert.match(html,/Ethereum/i);
-  assert.match(html,/Copy Address/i);
+  assert.match(html,/PayPal/i);
 });
 
-test('MovieFinder restores the classic natural-language discovery interface', async () => {
+test('MovieFinder renders screenshot-style wide results with watch-provider cards', async () => {
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/Ask MovieFinder like you would ask a person\./i);
-  assert.match(html,/Search live/i);
-  assert.match(html,/Star Wars\s*·\s*free/i);
-  assert.match(html,/The Godfather/i);
-  assert.match(html,/Horror\s*·\s*RT 90\+\s*·\s*rent &lt;\$5/i);
-  assert.match(html,/Horror on Netflix/i);
-  assert.match(html,/matching titles/i);
-  assert.match(html,/>Matches</i);
-  assert.match(html,/BEST OPTION/i);
   assert.match(html,/class="[^"]*movie-card/i);
-  assert.match(html,/class="[^"]*poster/i);
-  assert.match(html,/class="[^"]*rating/i);
+  assert.match(html,/class="[^"]*movie-overview/i);
+  assert.match(html,/class="[^"]*watch-panel/i);
+  assert.match(html,/class="[^"]*offer-strip/i);
+  assert.match(html,/class="[^"]*offer-card/i);
+  assert.match(html,/Where to Watch/i);
+  assert.match(html,/Availability and prices may vary by region and time/i);
+});
+
+test('MovieFinder keeps support hidden until the Support button opens the overlay', async () => {
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  assert.match(html,/data-support-open/i);
+  assert.match(html,/id="supportOverlay"[^>]*hidden/i);
+  assert.match(html,/data-support-close/i);
+  assert.match(html,/♥ Support/i);
 });
