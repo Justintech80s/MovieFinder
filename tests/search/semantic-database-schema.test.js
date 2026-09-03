@@ -12,7 +12,7 @@ test('Phase 5 migration creates provenance-aware semantic documents with English
   const sql = await migrationSql();
 
   assert.match(sql, /create extension if not exists vector/);
-  assert.match(sql, /create table if not exists cinema_documents/);
+  assert.match(sql, /create table if not exists (?:public\.)?cinema_documents/);
   assert.match(sql, /embedding\s+vector\(1536\)/);
   assert.match(sql, /to_tsvector\('english'/);
   assert.match(sql, /using gin\s*\(fts\)/);
