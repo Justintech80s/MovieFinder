@@ -32,3 +32,14 @@ test('MovieFinder restores the classic natural-language discovery interface', as
   assert.match(html,/class="[^"]*poster/i);
   assert.match(html,/class="[^"]*rating/i);
 });
+
+test('MovieFinder result cards expose the wide Where to Watch price and availability layout', async () => {
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  assert.match(html,/Where to Watch/i);
+  assert.match(html,/offer-card/i);
+  assert.match(html,/offer-price/i);
+  assert.match(html,/priceLabel/i);
+  assert.match(html,/Subscription/i);
+  assert.match(html,/Rent/i);
+  assert.match(html,/Buy/i);
+});
