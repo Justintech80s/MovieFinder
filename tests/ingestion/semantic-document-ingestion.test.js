@@ -37,13 +37,15 @@ test('unchanged semantic documents do not call the embedding provider when no ro
   assert.equal(store.calls.upsert[0][0].sourceRef, 'Q1');
 });
 
-test('stale documents are embedded in bounded batches and saved with model metadata', async () => {
+test('stale documents use the corpus embedding purpose, stay bounded, and save model metadata', async () => {
   const pending = Array.from({ length: 40 }, (_, index) => ({ id: `doc-${index}`, content: `text ${index}` }));
   const store = semanticStore({ pending });
   const batches = [];
+  const purposes = [];
   const adapter = {
-    async embed({ texts }) {
+    async embed({ texts, purpose }) {
       batches.push(texts);
+      purposes.push(purpose);
       return { provider: 'test', model: 'embed-v2', dimensions: 1536, vectors: texts.map(() => VECTOR) };
     }
   };
@@ -55,6 +57,7 @@ test('stale documents are embedded in bounded batches and saved with model metad
 
   assert.equal(batches.length, 1);
   assert.equal(batches[0].length, 32);
+  assert.deepEqual(purposes, ['corpus']);
   assert.equal(store.calls.save[0].length, 32);
   assert.equal(store.calls.save[0][0].embeddingModel, 'embed-v2');
   assert.equal(store.calls.save[0][0].embeddingVersion, 'v2');
