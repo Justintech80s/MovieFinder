@@ -6,17 +6,17 @@
   <title>MovieFinder</title>
   <meta name="description" content="Ask MovieFinder natural-language questions about movies, ratings and streaming availability.">
   <style>
-    :root{--bg:#05070a;--panel:#0d131d;--panel2:#111927;--panel3:#18233a;--line:#29354a;--muted:#8d99ac;--text:#fff;--cream:#f7f4eb;--gold:#efd05d;--btc:#ffbd16;--eth:#bf69ff;--blue:#6ba7ff}
-    *{box-sizing:border-box}html{background:#000}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}button,input{font:inherit}.screen[hidden]{display:none!important}.app{min-height:100vh}.movie-shell{width:min(1480px,92vw);margin:0 auto;padding:32px 0 80px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:56px}.brand{font-weight:900;font-size:18px;letter-spacing:-.04em}.support-button{border:1px solid #273246;background:#111824;color:#fff;border-radius:11px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer}.hero{max-width:1310px}.hero h1{font-size:clamp(54px,6vw,96px);line-height:.96;letter-spacing:-.065em;margin:0 0 20px;font-weight:950;max-width:1120px}.hero-copy{color:#9aa7bb;max-width:1240px;font-size:17px;line-height:1.55;margin:0 0 22px}.search-wrap{display:flex;align-items:stretch;gap:14px;background:#111827;border:1px solid #273349;border-radius:18px;padding:12px;min-height:116px;box-shadow:0 18px 50px rgba(0,0,0,.24)}.search-wrap input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#fff;padding:0 10px;font-size:18px}.search-wrap input::placeholder{color:#667086}.search-live{width:155px;border:0;border-radius:12px;background:#fff;color:#090c11;font-weight:900;cursor:pointer}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}.chip{border:1px solid #2a3549;background:#141d2c;color:#f4f6fa;border-radius:10px;padding:8px 12px;font-size:13px;cursor:pointer}.result-summary{margin-top:34px;background:#0d131d;border:1px solid #263247;border-radius:14px;padding:18px 20px;color:#d9deea}.result-summary strong{display:block;font-size:20px}.result-summary span{display:block;color:#818da0;font-size:13px;margin-top:5px}.matches-title{font-size:29px;margin:28px 0 15px;letter-spacing:-.03em}.results-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.movie-card{background:linear-gradient(180deg,#1d2e50 0%,#152340 100%);border:1px solid #354a72;border-radius:18px;overflow:hidden;min-width:0;box-shadow:0 18px 45px rgba(0,0,0,.22)}.poster{position:relative;aspect-ratio:16/10;background:linear-gradient(145deg,#1b2945,#0c1424);overflow:hidden}.poster img{width:100%;height:100%;object-fit:cover;display:block}.poster::after{content:"";position:absolute;inset:45% 0 0;background:linear-gradient(transparent,rgba(12,22,41,.92))}.poster-title{position:absolute;z-index:2;left:22px;right:18px;bottom:14px;font-size:clamp(25px,2.3vw,38px);font-weight:950;line-height:1.02;letter-spacing:-.045em;text-shadow:0 2px 16px rgba(0,0,0,.55)}.movie-body{padding:18px 20px 22px}.badges{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px}.badge,.rating{border:1px solid #5a6b8f;border-radius:999px;padding:7px 11px;font-size:13px;font-weight:750;background:rgba(11,20,38,.24)}.synopsis{font-size:15px;line-height:1.5;color:#eef2fa;min-height:90px;margin:0 0 16px}.best-option{display:block;width:100%;background:var(--cream);color:#11151d;border-radius:14px;padding:17px 18px;font-weight:950;font-size:17px;line-height:1.35}.offer-list{margin-top:12px;color:#c7cfdf;font-size:13px;line-height:1.5}.empty{grid-column:1/-1;border:1px dashed #283348;border-radius:14px;padding:28px;color:#7f8a9c}.error{color:#ff9b9b}.support-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px 16px;background:#020304}.support-card{width:min(980px,95vw);background:linear-gradient(180deg,#101722,#0b1119);border:1px solid #202a39;padding:46px 52px 40px;text-align:center}.support-eyebrow{letter-spacing:.4em;color:#9aa1ad;font-size:14px;font-weight:700}.support-card h2{font-weight:500;color:#ddd;margin:30px 0 32px;font-size:28px}.pay-label{letter-spacing:.28em;font-weight:900;margin:20px 0 12px}.pay-label.btc{color:var(--btc)}.pay-label.eth{color:var(--eth)}.pay-label.paypal{color:var(--blue)}.wallet-address{border:2px solid #2e394b;background:#151c27;border-radius:15px;padding:18px 16px;color:#edf0f5;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:18px;overflow-wrap:anywhere;cursor:pointer}.paypal-qr{width:252px;height:252px;margin:14px auto 12px;border-radius:20px;background:#fff;padding:18px;display:grid;grid-template-columns:repeat(13,1fr);grid-template-rows:repeat(13,1fr);gap:2px;box-shadow:inset 0 0 0 6px #111}.paypal-qr i{background:#111;border-radius:1px}.paypal-qr i:nth-child(3n),.paypal-qr i:nth-child(5n),.paypal-qr i:nth-child(7n){background:#fff}.paypal-qr::after{content:"P";position:absolute}.qr-note{color:#979fac;letter-spacing:.14em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.enter-button{display:block;width:100%;margin:32px auto 16px;border:0;border-radius:24px;background:linear-gradient(90deg,#e6be43,#f6dd72);color:#0c1016;padding:24px;font-size:26px;font-weight:950;letter-spacing:.1em;cursor:pointer;box-shadow:0 0 28px rgba(239,208,93,.16)}.continue-button{background:transparent;border:0;color:#8d96a4;font-size:12px;cursor:pointer}.support-note{color:#636d7d;font-size:10px;margin-top:18px}.copy-hint{min-height:18px;color:#8a94a2;font-size:11px;margin-top:6px}.hidden-template{display:none}
-    @media(max-width:980px){.results-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero h1{font-size:clamp(48px,9vw,76px)}}
-    @media(max-width:650px){.movie-shell{width:91vw;padding:24px 0 48px;min-height:100svh;display:flex;flex-direction:column;justify-content:center}.topbar{margin-bottom:44px}.brand{font-size:17px}.hero h1{font-size:clamp(46px,12vw,64px);line-height:.98}.hero-copy{font-size:14px}.search-wrap{min-height:100px}.search-live{width:128px;font-size:13px}.chip{font-size:11px;padding:7px 9px}.results-grid{grid-template-columns:1fr}.matches-title{font-size:26px}.support-card{padding:30px 22px}.support-card h2{font-size:22px}.wallet-address{font-size:14px}.paypal-qr{width:220px;height:220px}.enter-button{font-size:20px}}
+    :root{--bg:#05070a;--panel:#0d131d;--panel2:#111927;--panel3:#18233a;--line:#29354a;--muted:#8d99ac;--text:#fff;--cream:#f7f4eb;--gold:#efd05d;--btc:#ffbd16;--eth:#bf69ff;--blue:#6ba7ff;--green:#4ee28a}
+    *{box-sizing:border-box}html{background:#000}body{margin:0;background:radial-gradient(circle at 50% -10%,#101a2b 0,#05070a 42%,#030507 100%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}button,input{font:inherit}.screen[hidden]{display:none!important}.app{min-height:100vh}.movie-shell{width:min(1500px,94vw);margin:0 auto;padding:26px 0 70px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:48px;padding-bottom:18px;border-bottom:1px solid #182235}.brand{font-weight:950;font-size:24px;letter-spacing:-.05em}.brand span{background:linear-gradient(90deg,#fff 0 34%,#7c77ff 60%,#ba4cff);-webkit-background-clip:text;background-clip:text;color:transparent}.support-button{border:1px solid #273246;background:#111824;color:#fff;border-radius:11px;padding:9px 14px;font-size:12px;font-weight:750;cursor:pointer}.hero{max-width:1310px}.hero h1{font-size:clamp(54px,6vw,92px);line-height:.96;letter-spacing:-.065em;margin:0 0 20px;font-weight:950;max-width:1120px}.hero-copy{color:#9aa7bb;max-width:1240px;font-size:17px;line-height:1.55;margin:0 0 22px}.search-wrap{display:flex;align-items:stretch;gap:14px;background:#111827;border:1px solid #273349;border-radius:18px;padding:12px;min-height:108px;box-shadow:0 18px 50px rgba(0,0,0,.24)}.search-wrap:focus-within{border-color:#5368a2;box-shadow:0 20px 60px rgba(0,0,0,.3),0 0 0 1px rgba(107,167,255,.15)}.search-wrap input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#fff;padding:0 10px;font-size:18px}.search-wrap input::placeholder{color:#667086}.search-live{width:155px;border:0;border-radius:12px;background:linear-gradient(135deg,#6e61ff,#5044e7);color:#fff;font-weight:900;cursor:pointer;box-shadow:0 8px 28px rgba(91,77,238,.28)}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}.chip{border:1px solid #2a3549;background:#141d2c;color:#f4f6fa;border-radius:10px;padding:8px 12px;font-size:13px;cursor:pointer}.result-summary{margin-top:34px;background:#0b121d;border:1px solid #233048;border-radius:14px;padding:17px 20px;color:#d9deea}.result-summary strong{display:flex;gap:6px;align-items:baseline;font-size:20px}.result-summary span{color:#818da0;font-size:13px;margin-top:5px}.result-summary #resultCount{font-size:20px;color:#fff;margin:0}.result-summary #resultLabel{font-size:15px;color:#c7d0df;margin:0}.matches-title{font-size:29px;margin:28px 0 15px;letter-spacing:-.03em}.results-grid{display:grid;grid-template-columns:1fr;gap:16px}.movie-card{display:grid;grid-template-columns:minmax(360px,.92fr) minmax(0,1.65fr);background:linear-gradient(145deg,#0c1421,#101b2b);border:1px solid #263650;border-radius:18px;overflow:hidden;min-width:0;box-shadow:0 18px 45px rgba(0,0,0,.22)}.movie-overview{display:grid;grid-template-columns:170px minmax(0,1fr);gap:20px;padding:18px;border-right:1px solid #263247;min-width:0}.poster{position:relative;aspect-ratio:2/3;background:linear-gradient(145deg,#1b2945,#0c1424);overflow:hidden;border-radius:12px;box-shadow:0 14px 32px rgba(0,0,0,.32)}.poster img{width:100%;height:100%;object-fit:cover;display:block}.poster-placeholder{height:100%;display:flex;align-items:center;justify-content:center;color:#64728a;font-weight:900;letter-spacing:.08em;font-size:12px}.movie-info{min-width:0;padding:2px 0}.movie-title-row{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}.movie-title{margin:0;font-size:24px;letter-spacing:-.035em;line-height:1.08}.movie-year{color:#9eabc0;font-size:14px}.genre-line{margin:9px 0 15px;color:#aab5c7;font-size:13px;line-height:1.4}.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}.badge,.rating{border:1px solid #3a4c69;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:750;background:rgba(13,22,39,.55)}.rating{color:#f8f9fc}.synopsis{font-size:14px;line-height:1.52;color:#dde3ed;margin:0}.watch-panel{min-width:0;padding:18px 18px 20px;background:linear-gradient(180deg,rgba(12,20,33,.65),rgba(8,14,24,.78))}.watch-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}.watch-head h3{margin:0;font-size:18px;letter-spacing:-.02em}.watch-count{font-size:12px;color:#8693a8}.offer-strip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(132px,155px);gap:10px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:thin;scrollbar-color:#34445d transparent}.offer-card{position:relative;min-height:180px;display:flex;flex-direction:column;align-items:flex-start;text-decoration:none;color:#fff;border:1px solid #293851;background:linear-gradient(180deg,#131e2e,#0e1724);border-radius:13px;padding:13px;transition:transform .16s ease,border-color .16s ease,background .16s ease}.offer-card:hover{transform:translateY(-2px);border-color:#53698e;background:linear-gradient(180deg,#17243a,#111c2b)}.provider-mark{height:55px;width:55px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#273957,#17243a);border:1px solid #3c4f70;font-size:16px;font-weight:950;letter-spacing:-.04em;margin-bottom:12px;text-transform:uppercase}.offer-provider{font-size:12px;font-weight:850;line-height:1.25;min-height:31px;color:#dfe5ef}.offer-price{font-size:17px;font-weight:950;margin-top:auto;padding-top:12px}.offer-price.included{color:var(--green)}.offer-access{font-size:12px;color:#c2ccda;margin-top:4px}.offer-quality{font-size:10px;color:#7f8ca0;margin-top:4px;text-transform:uppercase}.best-flag{position:absolute;right:8px;top:8px;background:#f2f0e9;color:#10151d;border-radius:999px;padding:4px 6px;font-size:8px;font-weight:950;letter-spacing:.05em}.no-offers{border:1px dashed #31415a;border-radius:13px;padding:24px;color:#8b97a9;line-height:1.5}.availability-note{display:flex;align-items:center;gap:7px;color:#707d90;font-size:12px;margin:17px 2px 0}.availability-note::before{content:"i";width:17px;height:17px;border:1px solid #526077;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#9aa7bb}.best-option{display:none}.offer-list{display:none}.empty{grid-column:1/-1;border:1px dashed #283348;border-radius:14px;padding:28px;color:#7f8a9c}.error{color:#ff9b9b}.support-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px 16px;background:#020304}.support-card{width:min(980px,95vw);background:linear-gradient(180deg,#101722,#0b1119);border:1px solid #202a39;padding:46px 52px 40px;text-align:center}.support-eyebrow{letter-spacing:.4em;color:#9aa1ad;font-size:14px;font-weight:700}.support-card h2{font-weight:500;color:#ddd;margin:30px 0 32px;font-size:28px}.pay-label{letter-spacing:.28em;font-weight:900;margin:20px 0 12px}.pay-label.btc{color:var(--btc)}.pay-label.eth{color:var(--eth)}.pay-label.paypal{color:var(--blue)}.wallet-address{border:2px solid #2e394b;background:#151c27;border-radius:15px;padding:18px 16px;color:#edf0f5;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:18px;overflow-wrap:anywhere;cursor:pointer}.paypal-qr{position:relative;width:252px;height:252px;margin:14px auto 12px;border-radius:20px;background:#fff;padding:18px;display:grid;grid-template-columns:repeat(13,1fr);grid-template-rows:repeat(13,1fr);gap:2px;box-shadow:inset 0 0 0 6px #111}.paypal-qr i{background:#111;border-radius:1px}.paypal-qr i:nth-child(3n),.paypal-qr i:nth-child(5n),.paypal-qr i:nth-child(7n){background:#fff}.paypal-qr::after{content:"P";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:950;font-size:58px;color:#1565c0;text-shadow:0 0 0 #fff}.qr-note{color:#979fac;letter-spacing:.14em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.enter-button{display:block;width:100%;margin:32px auto 16px;border:0;border-radius:24px;background:linear-gradient(90deg,#e6be43,#f6dd72);color:#0c1016;padding:24px;font-size:26px;font-weight:950;letter-spacing:.1em;cursor:pointer;box-shadow:0 0 28px rgba(239,208,93,.16)}.continue-button{background:transparent;border:0;color:#8d96a4;font-size:12px;cursor:pointer}.support-note{color:#636d7d;font-size:10px;margin-top:18px}.copy-hint{min-height:18px;color:#8a94a2;font-size:11px;margin-top:6px}.hidden-template{display:none}
+    @media(max-width:1100px){.movie-card{grid-template-columns:1fr}.movie-overview{border-right:0;border-bottom:1px solid #263247}.hero h1{font-size:clamp(48px,8vw,76px)}}
+    @media(max-width:700px){.movie-shell{width:92vw;padding:20px 0 48px}.topbar{margin-bottom:34px}.brand{font-size:21px}.hero h1{font-size:clamp(44px,12vw,62px);line-height:.98}.hero-copy{font-size:14px}.search-wrap{min-height:90px;gap:8px}.search-live{width:112px;font-size:13px}.chip{font-size:11px;padding:7px 9px}.matches-title{font-size:26px}.movie-overview{grid-template-columns:105px minmax(0,1fr);gap:14px;padding:13px}.movie-title{font-size:20px}.genre-line{font-size:11px}.synopsis{font-size:12px}.watch-panel{padding:15px 13px 17px}.offer-strip{grid-auto-columns:minmax(125px,145px)}.support-card{padding:30px 22px}.support-card h2{font-size:22px}.wallet-address{font-size:14px}.paypal-qr{width:220px;height:220px}.enter-button{font-size:20px}}
   </style>
 </head>
 <body>
 <div class="app">
   <main id="movies" class="screen movie-shell" data-screen="movies">
     <header class="topbar">
-      <div class="brand">MovieFinder</div>
+      <div class="brand"><span>MOVIEFINDER</span></div>
       <button id="openSupport" type="button" class="support-button">♥ Support</button>
     </header>
 
@@ -36,15 +36,16 @@
     </section>
 
     <section id="resultSummary" class="result-summary" hidden>
-      <strong><span id="resultCount">0</span> matching titles</strong>
+      <strong><span id="resultCount">0</span> <span id="resultLabel">matching titles</span></strong>
       <span id="checkedAt">U.S. availability</span>
     </section>
 
     <h2 class="matches-title">Matches</h2>
     <section id="results" class="results-grid" aria-live="polite"></section>
+    <div class="availability-note">Availability and prices may vary by region and time.</div>
 
     <div class="hidden-template" aria-hidden="true">
-      <article class="movie-card"><div class="poster"></div><div class="rating"></div><div class="best-option">BEST OPTION</div></article>
+      <article class="movie-card"><div class="poster"></div><div class="rating"></div><div class="best-option">BEST OPTION</div><div>Where to Watch · Subscription · Rent · Buy</div><div class="offer-card"><span class="offer-price">priceLabel</span></div></article>
     </div>
   </main>
 
@@ -54,11 +55,11 @@
       <h2>Pay any amount in Bitcoin or Ethereum</h2>
 
       <div class="pay-label btc">₿ &nbsp; BITCOIN</div>
-      <div class="wallet-address" id="btcAddress" tabindex="0" role="button" aria-label="Copy Bitcoin address">35pjN4cz6XHpGyyEBAgSAAjuDTbwLK4iSU</div>
+      <div class="wallet-address" id="btcAddress" tabindex="0" role="button" aria-label="Copy Address for Bitcoin">35pjN4cz6XHpGyyEBAgSAAjuDTbwLK4iSU</div>
       <div class="copy-hint" id="btcHint"></div>
 
       <div class="pay-label eth">◆ &nbsp; ETHEREUM</div>
-      <div class="wallet-address" id="ethAddress" tabindex="0" role="button" aria-label="Copy Ethereum address">0x8AdE34252Ef275b2b503387209e0f56056D29A34</div>
+      <div class="wallet-address" id="ethAddress" tabindex="0" role="button" aria-label="Copy Address for Ethereum">0x8AdE34252Ef275b2b503387209e0f56056D29A34</div>
       <div class="copy-hint" id="ethHint"></div>
 
       <div class="pay-label paypal">💙 &nbsp; PAYPAL</div>
@@ -92,48 +93,104 @@ const input=document.getElementById('query');
 const results=document.getElementById('results');
 const summary=document.getElementById('resultSummary');
 const count=document.getElementById('resultCount');
+const resultLabel=document.getElementById('resultLabel');
 const checkedAt=document.getElementById('checkedAt');
+const matchesTitle=document.querySelector('.matches-title');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const first=(...v)=>v.find(x=>x!==undefined&&x!==null&&x!=='');
 const normScore=v=>{if(v===undefined||v===null||v==='')return '';const n=String(v).replace('%','');return /^\d+(\.\d+)?$/.test(n)?n:String(v)};
 const posterUrl=item=>{let p=first(item.poster,item.posterUrl,item.poster_url,item.image,item.imageUrl,item.image_url,item.backdrop,item.backdropUrl,item.backdrop_url,item.posterPath,item.poster_path);if(!p)return '';if(String(p).startsWith('/'))return 'https://image.tmdb.org/t/p/w780'+p;return String(p)};
-const offerName=o=>first(o?.package?.clearName,o?.package?.shortName,o?.provider,o?.service,o?.name,'');
-const offerType=o=>first(o?.monetizationType,o?.monetization_type,o?.type,o?.accessType,o?.access_type,'');
-function render(items){
+const offerName=o=>first(o?.package?.clearName,o?.package?.shortName,o?.provider,o?.service,o?.name,'Unknown provider');
+const offerType=o=>String(first(o?.monetizationType,o?.monetization_type,o?.type,o?.accessType,o?.access_type,'UNKNOWN')).toUpperCase();
+const offerQuality=o=>String(first(o?.quality,o?.presentationType,o?.presentation_type,'')).toUpperCase();
+const offerRank={FREE:0,ADS:1,FLATRATE:2,SUBSCRIPTION:2,RENT:3,BUY:4};
+const offerPriceNumber=o=>{const value=first(o?.price,o?.retailPriceValue,o?.retail_price_value);return value===undefined||value===null||value===''||!Number.isFinite(Number(value))?null:Number(value)};
+function offerPrice(o){
+  const type=offerType(o);
+  if(type==='FREE'||type==='ADS')return 'Free';
+  if(type==='FLATRATE'||type==='SUBSCRIPTION')return 'Included';
+  const label=first(o?.priceLabel,o?.price_label);
+  if(label)return String(label);
+  const price=offerPriceNumber(o);
+  if(price==null)return 'Check price';
+  const currency=String(first(o?.currency,'USD')).toUpperCase();
+  return currency==='USD'?'$'+price.toFixed(2):price.toFixed(2)+' '+currency;
+}
+function accessLabel(o){
+  const type=offerType(o);
+  if(type==='FLATRATE'||type==='SUBSCRIPTION')return 'Subscription';
+  if(type==='ADS')return 'Free with ads';
+  if(type==='FREE')return 'Free';
+  if(type==='RENT')return 'Rent';
+  if(type==='BUY')return 'Buy';
+  return type.charAt(0)+type.slice(1).toLowerCase();
+}
+function providerMark(name){
+  const words=String(name||'').replace(/[^a-z0-9 ]/gi,' ').trim().split(/\s+/).filter(Boolean);
+  return (words.slice(0,2).map(word=>word[0]).join('')||'TV').toUpperCase();
+}
+function normalizedOffers(raw=[]){
+  const seen=new Set();
+  return (Array.isArray(raw)?raw:[]).filter(offer=>{
+    const key=[offerName(offer),offerType(offer),offerPrice(offer),offerQuality(offer),first(offer?.url,offer?.standardWebURL,'')].join('|').toLowerCase();
+    if(seen.has(key))return false;seen.add(key);return true;
+  }).sort((a,b)=>{
+    const typeDiff=(offerRank[offerType(a)]??9)-(offerRank[offerType(b)]??9);if(typeDiff)return typeDiff;
+    const priceA=offerPriceNumber(a)??9999,priceB=offerPriceNumber(b)??9999;if(priceA!==priceB)return priceA-priceB;
+    return offerName(a).localeCompare(offerName(b));
+  });
+}
+function offerCard(offer,index){
+  const provider=offerName(offer);
+  const price=offerPrice(offer);
+  const access=accessLabel(offer);
+  const quality=offerQuality(offer);
+  const url=first(offer?.url,offer?.standardWebURL,offer?.webUrl,'');
+  const included=['FREE','ADS','FLATRATE','SUBSCRIPTION'].includes(offerType(offer));
+  const inside=`${index===0?'<span class="best-flag">BEST OPTION</span>':''}<span class="provider-mark">${esc(providerMark(provider))}</span><span class="offer-provider">${esc(provider)}</span><span class="offer-price${included?' included':''}">${esc(price)}</span><span class="offer-access">${esc(access)}</span>${quality?`<span class="offer-quality">${esc(quality)}</span>`:''}`;
+  return url?`<a class="offer-card" href="${esc(url)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(provider)} ${esc(access)} option">${inside}</a>`:`<div class="offer-card">${inside}</div>`;
+}
+function render(items,{exactTitleMode=false}={}){
   results.innerHTML=items.length?items.map(item=>{
-    const offers=Array.isArray(item.offers)?item.offers:[];
-    const best=offers[0]||item.bestOption||item.best_option||null;
-    const bestName=best?offerName(best):first(item.bestProvider,item.best_provider,'');
-    const bestType=best?offerType(best):first(item.bestType,item.best_type,'');
-    const rt=normScore(first(item.rottenTomatoes,item.rotten_tomatoes,item.rtScore,item.rt_score,item.tomatoScore,item.tomato_score));
-    const imdb=normScore(first(item.imdb,item.imdbRating,item.imdb_rating,item.imdbScore,item.imdb_score));
+    const offers=normalizedOffers(item.offers);
+    const rt=normScore(first(item.ratings?.rottenTomatoes,item.rottenTomatoes,item.rotten_tomatoes,item.rtScore,item.rt_score,item.tomatoScore,item.tomato_score));
+    const imdb=normScore(first(item.ratings?.imdb,item.imdb,item.imdbRating,item.imdb_rating,item.imdbScore,item.imdb_score));
     const overview=first(item.overview,item.description,item.plot,item.summary,'Availability and details are being checked for this title.');
     const image=posterUrl(item);
     const title=first(item.title,item.name,'Untitled');
     const year=first(item.year,item.releaseYear,item.release_year,'');
     const type=String(first(item.mediaType,item.media_type,item.type,'MOVIE')).toUpperCase();
-    const providers=[...new Set(offers.map(offerName).filter(Boolean))];
-    return `<article class="movie-card">
-      <div class="poster">${image?`<img src="${esc(image)}" alt="${esc(title)} artwork" loading="lazy">`:''}<div class="poster-title">${esc(title)}${year?` ${esc(year)}`:''}</div></div>
-      <div class="movie-body">
-        <div class="badges"><span class="badge">${esc(type)}</span>${rt?`<span class="rating">🍅 ${esc(rt)}%</span>`:''}${imdb?`<span class="rating">IMDb ${esc(imdb)}</span>`:''}</div>
-        <p class="synopsis">${esc(overview)}</p>
-        <div class="best-option">BEST OPTION${bestName?` · ${esc(bestName)}`:''}${bestType?` · ${esc(bestType)}`:''}</div>
-        ${providers.length?`<div class="offer-list">${esc(providers.join(' · '))}</div>`:''}
-      </div>
+    const genres=Array.isArray(item.genres)?item.genres.filter(Boolean):[];
+    return `<article class="movie-card${exactTitleMode?' exact-title-card':''}">
+      <section class="movie-overview">
+        <div class="poster">${image?`<img src="${esc(image)}" alt="${esc(title)} artwork" loading="lazy">`:'<div class="poster-placeholder">MOVIEFINDER</div>'}</div>
+        <div class="movie-info">
+          <div class="movie-title-row"><h3 class="movie-title">${esc(title)}</h3>${year?`<span class="movie-year">${esc(year)}</span>`:''}</div>
+          ${genres.length?`<div class="genre-line">${esc(genres.join(' · '))}</div>`:'<div class="genre-line">Current U.S. viewing options</div>'}
+          <div class="badges"><span class="badge">${esc(type)}</span>${rt?`<span class="rating">🍅 ${esc(rt)}%</span>`:''}${imdb?`<span class="rating">IMDb ${esc(imdb)}</span>`:''}</div>
+          <p class="synopsis">${esc(overview)}</p>
+        </div>
+      </section>
+      <section class="watch-panel">
+        <div class="watch-head"><h3>Where to Watch</h3><span class="watch-count">${offers.length?`${offers.length} current option${offers.length===1?'':'s'}`:'No current offers'}</span></div>
+        ${offers.length?`<div class="offer-strip">${offers.map(offerCard).join('')}</div>`:'<div class="no-offers">No current U.S. streaming, rental, or purchase offers were returned for this title.</div>'}
+      </section>
     </article>`;
-  }).join(''):'<div class="empty">No matches found.</div>';
+  }).join(''):'<div class="empty">No exact movie or matching titles found.</div>';
 }
 async function runSearch(q){
-  q=q.trim();if(!q)return;input.value=q;results.innerHTML='<div class="empty">Searching live availability…</div>';summary.hidden=true;
+  q=q.trim();if(!q)return;input.value=q;results.innerHTML='<div class="empty">Searching live streaming, rental, and purchase availability…</div>';summary.hidden=true;
   try{
     const response=await fetch('/api/search?q='+encodeURIComponent(q));
     if(!response.ok)throw new Error('Search unavailable ('+response.status+')');
     const data=await response.json();
     const items=Array.isArray(data.results)?data.results:Array.isArray(data)?data:[];
+    const exactTitleMode=data.exactTitleMode===true;
     count.textContent=items.length;
-    checkedAt.textContent='Checked '+new Date().toLocaleString('en-US')+' · U.S. availability';
-    summary.hidden=false;render(items);
+    resultLabel.textContent=exactTitleMode?'exact title':'matching titles';
+    matchesTitle.textContent=exactTitleMode?'Where to watch':'Matches';
+    checkedAt.textContent='Checked '+new Date().toLocaleString('en-US')+' · U.S. availability and prices';
+    summary.hidden=false;render(items,{exactTitleMode});
   }catch(error){results.innerHTML=`<div class="empty error">${esc(error.message||'Search is temporarily unavailable.')}</div>`;}
 }
 form.addEventListener('submit',e=>{e.preventDefault();runSearch(input.value)});
