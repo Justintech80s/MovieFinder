@@ -4,18 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MovieFinder</title>
-  <meta name="description" content="MovieFinder — search movies, filmographies and streaming availability.">
+  <meta name="description" content="MovieFinder — search movies, filmographies and current streaming availability.">
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#07090d;color:#f7f7f8;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{width:min(1180px,94vw);margin:auto;padding:22px 0 80px}.topbar{display:flex;align-items:center;gap:22px;margin-bottom:28px;position:relative;z-index:2}.brand{font-size:clamp(26px,4vw,42px);font-weight:900;letter-spacing:-.05em;margin:0;white-space:nowrap}.brand span{color:#7c4dff}.search-wrap{flex:1}.search{display:flex;gap:10px;background:#111824;border:1px solid #263044;border-radius:14px;padding:7px;box-shadow:0 18px 55px rgba(0,0,0,.28)}input{flex:1;border:0;outline:0;background:transparent;color:#fff;font-size:17px;padding:11px 12px;min-width:0}button{border:0;border-radius:10px;padding:11px 18px;background:#5f43f5;color:#fff;font-weight:800;cursor:pointer}.nav{display:flex;align-items:center;gap:14px;white-space:nowrap}.nav button{background:transparent;color:#e7eaf0;padding:9px 8px}.support-trigger{border:1px solid #7c4dff!important;border-radius:16px!important;padding:10px 16px!important;background:#111824!important}.tag{color:#a8adb7;font-size:16px;margin:8px 0 20px}.examples{margin:12px 4px 0;color:#777f8c;font-size:13px}.status{margin-top:24px;color:#9da4af}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:18px}.card{background:#111824;border:1px solid #252f40;border-radius:16px;padding:17px}.title{font-weight:800;font-size:18px}.meta{color:#949ba7;font-size:13px;margin-top:5px}.offers{font-size:13px;margin-top:12px;color:#d7d9de}.error{color:#ff9a9a}.support-overlay[hidden]{display:none}.support-overlay{position:fixed;inset:0;background:rgba(2,5,10,.86);backdrop-filter:blur(9px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px}.support-panel{width:min(620px,100%);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#111925 0%,#0b121d 100%);border:1px solid #2a3548;border-radius:24px;padding:28px;box-shadow:0 30px 100px rgba(0,0,0,.65);position:relative}.support-close{position:absolute;right:18px;top:18px;width:42px;height:42px;border-radius:50%;padding:0;background:#141d2a;border:1px solid #31405a;font-size:24px}.support-kicker{text-align:center;color:#9ba5b5;letter-spacing:.28em;font-weight:800;font-size:13px}.support-panel h2{text-align:center;font-size:34px;margin:18px 0 8px}.support-copy{text-align:center;color:#c1c7d0;margin:0 0 28px}.support-section{margin:24px 0}.support-section h3{text-align:center;letter-spacing:.18em;font-size:16px;margin-bottom:12px}.btc h3{color:#ffbf22}.eth h3{color:#c460ff}.paypal h3{color:#66a8ff}.address{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#151f2d;border:1px solid #344259;border-radius:16px;padding:17px;text-align:center;overflow-wrap:anywhere;color:#e6e9ef}.copy-status{text-align:center;color:#8e99aa;font-size:12px;min-height:16px;margin-top:8px}.paypal-link{display:block;text-align:center;text-decoration:none;background:#182334;border:1px solid #344259;color:#fff;border-radius:16px;padding:18px;font-weight:800}.enter-button{width:100%;margin-top:18px;background:linear-gradient(90deg,#f3c83f,#ffe27a);color:#0b1018;font-size:18px;padding:17px}.continue-button{display:block;width:100%;margin-top:8px;background:transparent;color:#aeb6c2;font-weight:500}.optional{text-align:center;color:#697589;font-size:12px;margin:12px 0 0}.warning{text-align:center;margin-top:18px;color:#687386;font-size:11px;line-height:1.5}@media(max-width:900px){.topbar{flex-wrap:wrap}.search-wrap{order:3;width:100%;flex-basis:100%}.nav{margin-left:auto}}@media(max-width:600px){.shell{padding-top:16px}.topbar{gap:10px}.brand{font-size:25px}.nav{gap:4px}.nav button:not(.support-trigger){display:none}.support-trigger{padding:9px 13px!important}.search{width:100%}.support-overlay{padding:0}.support-panel{width:100%;height:100%;max-height:none;border-radius:0;padding:62px 24px 30px}.support-close{top:14px;right:14px}}
+    :root{--bg:#06101b;--panel:#0c1724;--panel2:#101d2c;--line:#26384d;--muted:#9aa8ba;--text:#f7f9fc;--purple:#6848ff;--green:#39e675;--gold:#ffd54a;--btc:#ffbd16;--eth:#bf69ff;--paypal:#66a8ff}
+    *{box-sizing:border-box}html{background:#03070c}body{margin:0;background:radial-gradient(circle at 45% -20%,#11233c 0,#08121f 35%,#050b13 70%,#03070c 100%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}button,input{font:inherit}.shell{width:min(1500px,96vw);margin:auto;padding:18px 0 54px}.topbar{display:flex;align-items:center;gap:20px;padding-bottom:16px;border-bottom:1px solid #162638;position:sticky;top:0;z-index:30;background:linear-gradient(180deg,rgba(5,13,23,.98),rgba(5,13,23,.88));backdrop-filter:blur(14px)}.brand{font-size:clamp(24px,3vw,34px);font-weight:950;letter-spacing:-.055em;white-space:nowrap}.brand span{color:#8c61ff}.search-wrap{flex:1}.search{display:flex;gap:10px;background:#111c2a;border:1px solid #283a50;border-radius:12px;padding:5px 6px;box-shadow:0 16px 44px rgba(0,0,0,.22)}.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#fff;padding:10px 12px;font-size:16px}.search button{border:0;border-radius:9px;background:linear-gradient(135deg,#694cff,#4f3ce8);color:#fff;font-weight:850;padding:10px 20px;cursor:pointer}.nav{display:flex;align-items:center;gap:13px;white-space:nowrap}.nav button{background:transparent;border:0;color:#f0f3f8;padding:9px 7px;cursor:pointer}.support-trigger{border:1px solid #694cff!important;background:#101a28!important;border-radius:16px!important;padding:10px 15px!important;font-weight:800}.results-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:26px 0 16px}.results-head h1{font-size:31px;letter-spacing:-.035em;margin:0}.results-head p{margin:6px 0 0;color:var(--muted)}.filters{display:flex;gap:9px;flex-wrap:wrap}.filter{border:1px solid #26374c;background:#101b29;color:#dce3ee;border-radius:10px;padding:10px 14px;font-size:13px}.status{color:#9aa8ba;margin:14px 0}.results-grid{display:grid;grid-template-columns:1fr;gap:15px}.movie-card{display:grid;grid-template-columns:minmax(470px,.95fr) minmax(0,1.6fr);background:linear-gradient(145deg,#0c1724,#0a1420);border:1px solid #21364e;border-radius:17px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.24)}.movie-overview{display:grid;grid-template-columns:185px minmax(0,1fr);gap:22px;padding:16px;border-right:1px solid #1d3046;min-width:0}.poster{aspect-ratio:2/3;border-radius:10px;background:#101c2b;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.32)}.poster img{width:100%;height:100%;object-fit:cover;display:block}.poster-placeholder{height:100%;display:flex;align-items:center;justify-content:center;padding:15px;text-align:center;color:#72829a;font-weight:800}.movie-info{min-width:0;padding:5px 0}.movie-title-row{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}.movie-title{margin:0;font-size:24px;letter-spacing:-.035em;line-height:1.08}.movie-year{color:#a5b0bf;font-size:14px}.meta-line{color:#b4bfce;font-size:13px;margin:8px 0}.genre-line{color:#a3afc0;font-size:13px;line-height:1.4;margin:6px 0 14px}.synopsis{font-size:14px;line-height:1.55;color:#e2e8f0;margin:0 0 17px}.ratings{display:flex;gap:10px;flex-wrap:wrap}.rating{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#f4f7fb}.rating .score{font-size:17px}.watch-panel{min-width:0;padding:17px 17px 18px;background:linear-gradient(180deg,rgba(12,23,37,.74),rgba(7,15,26,.86))}.watch-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:13px}.watch-head h3{margin:0;font-size:18px}.watch-count{color:#909db0;font-size:12px}.offer-strip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(125px,145px);gap:9px;overflow-x:auto;padding:2px 2px 9px;scrollbar-width:thin;scrollbar-color:#3b4c64 transparent}.offer-card{position:relative;min-height:184px;border:1px solid #2a3b52;border-radius:12px;background:linear-gradient(180deg,#121f30,#0d1825);padding:12px;color:#fff;text-decoration:none;display:flex;flex-direction:column;align-items:flex-start}.offer-card:hover{border-color:#546d93;transform:translateY(-1px)}.provider-mark{width:54px;height:54px;border-radius:11px;border:1px solid #405575;background:linear-gradient(145deg,#243a5c,#13223a);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:950;font-size:11px;line-height:1.05;text-transform:uppercase;margin-bottom:11px;padding:4px}.offer-provider{font-size:12px;font-weight:850;line-height:1.25;min-height:31px}.offer-price{font-size:17px;font-weight:950;margin-top:auto;padding-top:12px}.offer-price.included{color:var(--green)}.offer-access{font-size:12px;color:#c6cfdb;margin-top:4px}.offer-quality{font-size:10px;color:#8290a4;margin-top:3px;text-transform:uppercase}.best-flag{position:absolute;right:7px;top:7px;background:#f2f1ea;color:#111822;border-radius:999px;font-size:8px;font-weight:950;padding:4px 6px}.no-offers{border:1px dashed #30445e;border-radius:12px;padding:22px;color:#8f9caf}.availability-note{display:flex;align-items:center;gap:7px;color:#78869a;font-size:12px;margin:17px 2px 0}.availability-note::before{content:"i";width:17px;height:17px;border:1px solid #52627a;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px}.error{color:#ff9c9c}.support-overlay[hidden]{display:none}.support-overlay{position:fixed;inset:0;background:rgba(2,5,10,.86);backdrop-filter:blur(9px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px}.support-panel{width:min(620px,100%);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#111925 0%,#0b121d 100%);border:1px solid #2a3548;border-radius:24px;padding:28px;box-shadow:0 30px 100px rgba(0,0,0,.65);position:relative}.support-close{position:absolute;right:18px;top:18px;width:42px;height:42px;border-radius:50%;padding:0;background:#141d2a;border:1px solid #31405a;color:#fff;font-size:24px;cursor:pointer}.support-kicker{text-align:center;color:#9ba5b5;letter-spacing:.28em;font-weight:800;font-size:13px}.support-panel h2{text-align:center;font-size:34px;margin:18px 0 8px}.support-copy{text-align:center;color:#c1c7d0;margin:0 0 28px}.support-section{margin:24px 0}.support-section h3{text-align:center;letter-spacing:.18em;font-size:16px;margin-bottom:12px}.btc h3{color:var(--btc)}.eth h3{color:var(--eth)}.paypal h3{color:var(--paypal)}.address{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#151f2d;border:1px solid #344259;border-radius:16px;padding:17px;text-align:center;overflow-wrap:anywhere;color:#e6e9ef}.copy-status{text-align:center;color:#8e99aa;font-size:12px;min-height:16px;margin-top:8px}.paypal-link{display:block;text-align:center;text-decoration:none;background:#182334;border:1px solid #344259;color:#fff;border-radius:16px;padding:18px;font-weight:800}.enter-button{width:100%;margin-top:18px;border:0;border-radius:18px;background:linear-gradient(90deg,#f3c83f,#ffe27a);color:#0b1018;font-size:18px;font-weight:900;padding:17px;cursor:pointer}.continue-button{display:block;width:100%;margin-top:8px;border:0;background:transparent;color:#aeb6c2;font-weight:500;padding:10px;cursor:pointer}.optional{text-align:center;color:#697589;font-size:12px;margin:12px 0 0}.warning{text-align:center;margin-top:18px;color:#687386;font-size:11px;line-height:1.5}
+    @media(max-width:1150px){.topbar{flex-wrap:wrap}.search-wrap{order:3;flex-basis:100%;width:100%}.movie-card{grid-template-columns:1fr}.movie-overview{border-right:0;border-bottom:1px solid #1d3046}}
+    @media(max-width:700px){.shell{width:94vw}.brand{font-size:24px}.nav button:not(.support-trigger){display:none}.results-head{align-items:flex-start;flex-direction:column}.filters{display:none}.movie-overview{grid-template-columns:110px minmax(0,1fr);gap:14px;padding:12px}.movie-title{font-size:20px}.synopsis{font-size:12px}.ratings{gap:8px}.watch-panel{padding:14px 12px}.offer-strip{grid-auto-columns:minmax(120px,140px)}.support-overlay{padding:0}.support-panel{width:100%;height:100%;max-height:none;border-radius:0;padding:62px 24px 30px}.support-close{top:14px;right:14px}}
   </style>
 </head>
 <body>
   <main class="shell">
     <header class="topbar">
-      <h1 class="brand">MOVIE<span>FINDER</span></h1>
+      <div class="brand">MOVIE<span>FINDER</span></div>
       <div class="search-wrap">
         <form id="searchForm" class="search">
-          <input id="query" name="q" autocomplete="off" placeholder="Try: Quentin Tarantino streaming movies" aria-label="Movie search">
+          <input id="query" name="q" autocomplete="off" placeholder="Search movies, people, genres or streaming..." aria-label="Movie search">
           <button type="submit">Search</button>
         </form>
       </div>
@@ -28,12 +31,21 @@
       </nav>
     </header>
 
-    <section id="movies">
-      <p class="tag">Find movies, complete filmographies and where they’re streaming.</p>
-      <div class="examples">Examples: “all Will Smith movies” · “1994 crime movies” · “The Godfather”</div>
-      <div id="status" class="status">Type what you want to watch.</div>
-      <section id="results" class="grid" aria-live="polite"></section>
+    <section class="results-head">
+      <div>
+        <h1 id="resultsTitle">Find something to watch</h1>
+        <p id="status" class="status">Search MovieFinder for current streaming availability.</p>
+      </div>
+      <div class="filters" aria-label="Result filters">
+        <button class="filter" type="button">⌘ Filters</button>
+        <button class="filter" type="button">All Services⌄</button>
+        <button class="filter" type="button">Best Price⌄</button>
+        <button class="filter" type="button">SD, HD, 4K⌄</button>
+      </div>
     </section>
+
+    <section id="results" class="results-grid" aria-live="polite"></section>
+    <div class="availability-note">Availability and prices may vary by region and time.</div>
   </main>
 
   <div id="supportOverlay" class="support-overlay" role="dialog" aria-modal="true" aria-labelledby="supportTitle" hidden>
@@ -74,27 +86,80 @@ const form=document.getElementById('searchForm');
 const input=document.getElementById('query');
 const status=document.getElementById('status');
 const results=document.getElementById('results');
+const resultsTitle=document.getElementById('resultsTitle');
 const supportOverlay=document.getElementById('supportOverlay');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const posterUrl=value=>value?String(value).replace('{format}','jpg'):'';
+const providerInitials=name=>String(name||'Watch').split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase();
+const offerType=offer=>String(offer?.type||offer?.accessType||'').toUpperCase();
+const priceText=offer=>{
+  const type=offerType(offer);
+  if(offer?.priceLabel)return String(offer.priceLabel);
+  if(type==='FLATRATE'||type==='SUBSCRIPTION')return 'Included';
+  if(type==='FREE'||type==='ADS')return 'Free';
+  if(Number.isFinite(Number(offer?.price)))return '$'+Number(offer.price).toFixed(2);
+  return 'View';
+};
+const accessText=offer=>{
+  const type=offerType(offer);
+  if(type==='FLATRATE'||type==='SUBSCRIPTION')return 'Subscription';
+  if(type==='ADS')return 'with ads';
+  if(type==='FREE')return 'Free';
+  if(type==='RENT')return 'Rent';
+  if(type==='BUY')return 'Buy';
+  return type||'Watch';
+};
+function renderOffer(offer,index){
+  const provider=offer?.provider||offer?.package?.clearName||offer?.package?.shortName||'Provider';
+  const price=priceText(offer);
+  const included=/^(Included|Free)$/i.test(price);
+  const href=offer?.url||'#';
+  const best=index===0?'<span class="best-flag">BEST</span>':'';
+  const quality=offer?.quality||'';
+  return `<a class="offer-card" href="${esc(href)}" ${href==='#'?'':'target="_blank" rel="noopener noreferrer"'}>${best}<span class="provider-mark">${esc(providerInitials(provider))}</span><span class="offer-provider">${esc(provider)}</span><span class="offer-price ${included?'included':''}">${esc(price)}</span><span class="offer-access">${esc(accessText(offer))}</span><span class="offer-quality">${esc(quality)}</span></a>`;
+}
+function renderMovie(item){
+  const offers=Array.isArray(item.offers)?item.offers.slice(0,16):[];
+  const poster=posterUrl(item.poster||item.posterUrl||item.image);
+  const genres=Array.isArray(item.genres)?item.genres.join(', '):'';
+  const ratings=item.ratings||{};
+  const imdb=ratings.imdb??item.imdbRating;
+  const rt=ratings.rottenTomatoes??item.rottenTomatoes;
+  const score=Number.isFinite(Number(item.matchScore))?Math.round(Number(item.matchScore)*100):null;
+  const roles=Array.isArray(item.roles)?item.roles:(item.role?[item.role]:[]);
+  return `<article class="movie-card">
+    <div class="movie-overview">
+      <div class="poster">${poster?`<img src="${esc(poster)}" alt="${esc(item.title||item.name||'Movie')} poster" loading="lazy">`:`<div class="poster-placeholder">${esc(item.title||item.name||'Movie')}</div>`}</div>
+      <div class="movie-info">
+        <div class="movie-title-row"><h2 class="movie-title">${esc(item.title||item.name||'Untitled')}</h2><span class="movie-year">${esc(item.year||'')}</span></div>
+        <div class="meta-line">${roles.length?esc(roles.join(', ')):esc(item.mediaType||'Movie')}</div>
+        <div class="genre-line">${esc(genres)}</div>
+        <p class="synopsis">${esc(item.description||item.synopsis||item.cinemaWhy||'MovieFinder found this title and checked its current availability.')}</p>
+        <div class="ratings">${rt!==undefined&&rt!==null?`<span class="rating">🍅 <span class="score">${esc(rt)}%</span> RT</span>`:''}${imdb!==undefined&&imdb!==null?`<span class="rating">IMDb <span class="score">${esc(imdb)}</span></span>`:''}${score!==null?`<span class="rating">Match <span class="score">${score}%</span></span>`:''}</div>
+      </div>
+    </div>
+    <div class="watch-panel">
+      <div class="watch-head"><h3>Where to Watch</h3><span class="watch-count">${offers.length?`${offers.length} current option${offers.length===1?'':'s'}`:'No current offers'}</span></div>
+      ${offers.length?`<div class="offer-strip">${offers.map(renderOffer).join('')}</div>`:'<div class="no-offers">No current streaming, rental, or purchase option was returned for this title.</div>'}
+    </div>
+  </article>`;
+}
 function render(items){
-  results.innerHTML=items.map(item=>{
-    const offers=Array.isArray(item.offers)?item.offers:[];
-    const services=[...new Set(offers.map(o=>o.package?.clearName||o.package?.shortName||o.provider||o.service).filter(Boolean))];
-    const roles=Array.isArray(item.roles)?item.roles:(item.role?[item.role]:[]);
-    return `<article class="card"><div class="title">${esc(item.title||item.name||'Untitled')}</div><div class="meta">${esc(item.year||'')}${roles.length?` · ${esc(roles.join(', '))}`:''}</div>${services.length?`<div class="offers">Streaming: ${esc(services.join(', '))}</div>`:''}</article>`;
-  }).join('');
+  results.innerHTML=items.map(renderMovie).join('');
 }
 form.addEventListener('submit',async event=>{
   event.preventDefault();
   const q=input.value.trim();
   if(!q)return;
-  status.textContent='Searching…';results.innerHTML='';
+  resultsTitle.textContent=`Results for “${q}”`;
+  status.textContent='Searching current availability…';
+  results.innerHTML='';
   try{
     const response=await fetch('/api/search?q='+encodeURIComponent(q));
     if(!response.ok)throw new Error('Search unavailable ('+response.status+')');
     const data=await response.json();
     const items=Array.isArray(data.results)?data.results:[];
-    status.textContent=items.length?`${items.length} result${items.length===1?'':'s'}`:'No matches found.';
+    status.textContent=items.length?`Found ${items.length} ${items.length===1?'movie':'movies'}`:'No matches found.';
     render(items);
   }catch(error){status.innerHTML=`<span class="error">${esc(error.message||'Search is temporarily unavailable.')}</span>`;}
 });
@@ -103,20 +168,10 @@ document.querySelectorAll('[data-support-open]').forEach(button=>button.addEvent
   supportOverlay.hidden=false;
   document.body.style.overflow='hidden';
 }));
-
-document.querySelectorAll('[data-support-close]').forEach(button=>button.addEventListener('click',()=>{
-  supportOverlay.hidden=true;
-  document.body.style.overflow='';
-}));
-
-supportOverlay.addEventListener('click',event=>{
-  if(event.target===supportOverlay){supportOverlay.hidden=true;document.body.style.overflow='';}
-});
-
-document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&!supportOverlay.hidden){supportOverlay.hidden=true;document.body.style.overflow='';}
-});
-
+function closeSupport(){supportOverlay.hidden=true;document.body.style.overflow='';}
+document.querySelectorAll('[data-support-close]').forEach(button=>button.addEventListener('click',closeSupport));
+supportOverlay.addEventListener('click',event=>{if(event.target===supportOverlay)closeSupport();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!supportOverlay.hidden)closeSupport();});
 document.querySelectorAll('.copy').forEach(button=>button.addEventListener('click',async()=>{
   const value=document.getElementById(button.dataset.copy).textContent.trim();
   const message=button.nextElementSibling;
