@@ -39,7 +39,7 @@ test('concept-heavy semantic search resolves entity ids through the graph and ex
   });
   const semantic = semanticRetriever({
     mode: 'hybrid', degraded: false, entityIds: ['m1', 'm2'],
-    documents: [{ id: 'd1', entityId: 'm1', type: 'movie_themes', excerpt: 'paranoid surveillance', source: { kind: 'fixture' }, provenance: {}, lexicalRank: 1, semanticRank: 1, fusedRank: 0.03 }]
+    documents: [{ id: 'd1', entityId: 'm1', type: 'movie_themes', excerpt: 'paranoid surveillance', source: { kind: 'fixture' }, provenance: {}, lexicalRank: 2, semanticRank: 1, fusedRank: 0.03 }]
   });
   const orchestrator = createLiveOrchestrator({
     graphStore: graph, semanticRetriever: semantic, semanticEnabled: true,
@@ -70,7 +70,7 @@ test('semantic candidates still obey deterministic hard year constraints after a
   });
   const result = await orchestrator.search({
     query: 'bleak 1974 crime films',
-    parsedIntent: { kind: 'discovery', concepts: ['bleak', 'crime'], year: 1974 }
+    parsedIntent: { kind: 'discovery', concepts: ['bleak', 'crime'], yearMin: 1974, yearMax: 1974 }
   });
   assert.deepEqual(result.results.map(movie => movie.id), ['right']);
 });
