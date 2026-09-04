@@ -230,3 +230,21 @@ Future work can include background ingestion scheduling, broader multi-source ci
 ## Project direction
 
 The long-term goal is larger than recommendations: make cinema searchable as a connected knowledge system so applications can reason across people, works, eras, styles, creative relationships, and changing availability while showing why a result matched.
+
+
+## Backend health and runtime configuration
+
+MovieFinder now exposes backend-only operational endpoints that do not change the website UI:
+
+- `GET /api/health` — shallow Node/Vercel liveness. This does not require Postgres, Redis, Python, or an AI provider to be available.
+- `GET /api/ready` — bounded readiness summary for the Node path plus configured database, cache, Python Cinema Brain, and AI-provider state.
+- Python Cinema Brain `GET /health` — shallow FastAPI liveness.
+- Python Cinema Brain `GET /ready` — safe configuration/readiness metadata for Python-side dependencies.
+
+The Node deterministic search path remains the minimum working backend. Supabase/Postgres is treated as a required dependency only when it is configured for the current runtime. Redis-compatible cache, Python Cinema Brain, and AI providers are optional enrichment layers and must degrade safely if unavailable.
+
+Runtime settings are documented in `.env.example`. Never commit real API keys, service-role keys, Redis credentials, or other secrets.
+
+Current backend controls include `JUSTWATCH_TIMEOUT_MS`, `SEARCH_RATE_LIMIT`, and `SEARCH_RATE_WINDOW_MS`. Invalid values are rejected through controlled backend-misconfiguration behavior rather than being exposed to clients.
+
+Vercel account/build-rate limits are deployment-infrastructure constraints. A `build-rate-limit` deployment failure does not mean MovieFinder's application health checks have failed.
