@@ -16,7 +16,7 @@ import { applyApiSecurityHeaders, createMemoryRateLimiter, requestClientKey, val
 
 const JW='https://apis.justwatch.com/graphql';
 const JUSTWATCH_TIMEOUT_MS=8_000;
-export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$language:Language!,$first:Int!,$search:String!){popularTitles(country:$country,first:$first,filter:{searchQuery:$search}){edges{node{id objectType content(country:$country,language:$language){title shortDescription originalReleaseYear fullPath posterUrl genres{shortName} scoring{imdbScore imdbVotes tomatoMeter}} offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName}}}}}}`;
+export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$language:Language!,$first:Int!,$search:String!){popularTitles(country:$country,first:$first,filter:{searchQuery:$search}){edges{node{id objectType content(country:$country,language:$language){title shortDescription originalReleaseYear fullPath posterUrl genres{shortName} scoring{imdbScore imdbVotes tomatoMeter}} offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName icon}}}}}}`;
 
 async function jwSearch(search,first=60){
   const controller=new AbortController();
@@ -40,7 +40,7 @@ function poster(u){return u?`https://images.justwatch.com${u.replace('{profile}'
 function mapNode(n){
   const c=n.content||{};
   const checkedAt=new Date().toISOString();
-  const offers=normalizeOffers((n.offers||[]).map(o=>({provider:o.package?.clearName||o.package?.shortName||o.package?.technicalName,type:o.monetizationType,price:o.retailPriceValue??o.retailPrice,currency:o.currency,quality:o.presentationType,url:o.standardWebURL})),{checkedAt,source:'JustWatch'});
+  const offers=normalizeOffers((n.offers||[]).map(o=>({provider:o.package?.clearName||o.package?.shortName||o.package?.technicalName,providerLogo:o.package?.icon,type:o.monetizationType,price:o.retailPriceValue??o.retailPrice,currency:o.currency,quality:o.presentationType,url:o.standardWebURL})),{checkedAt,source:'JustWatch'});
   return {
     id:n.id,title:c.title,year:c.originalReleaseYear||null,mediaType:n.objectType==='SHOW'?'SHOW':'MOVIE',description:c.shortDescription||'',
     genres:(c.genres||[]).map(g=>g?.shortName).filter(Boolean),poster:poster(c.posterUrl),
