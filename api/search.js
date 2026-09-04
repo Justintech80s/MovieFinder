@@ -147,7 +147,8 @@ async function deterministicApplicationSearch({query='',parsedIntent={}}={}){
       ...movie,
       requestedSeason:parsed.requestedSeason,
       seasonAvailabilityStatus:'UNKNOWN',
-      seasonOffers:[]
+      seasonOffers:[],
+      ...(parsed.requestedEpisode!=null?{requestedEpisode:parsed.requestedEpisode,episodeAvailabilityStatus:'UNKNOWN',episodeOffers:[]}: {})
     }:movie);
   }
   results=rankResults(results,parsed).slice(0,40);
