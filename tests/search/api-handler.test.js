@@ -200,3 +200,14 @@ test('default API resolves a movies-like query through the configured graph stor
     globalThis.fetch=previousFetch;
   }
 });
+
+
+test('exact title search suppresses loose title variants when an exact match exists', async () => {
+  const res=await withCatalog([
+    {node:jwNode({id:'inception',title:'Inception',year:2010})},
+    {node:jwNode({id:'bikini-inception',title:'Bikini Inception',year:2015})},
+    {node:jwNode({id:'crack-inception',title:'The Crack: Inception',year:2019})}
+  ],'Inception');
+  assert.equal(res.statusCode,200);
+  assert.deepEqual(res.body.results.map(x=>x.title),['Inception']);
+});
