@@ -13,10 +13,10 @@ function responseRecorder(){
   };
 }
 
-function jwNode({id,title,year,imdb=8,votes=100000,rt=null,genres=[],provider='Example Streamer',type='FLATRATE'}){
+function jwNode({id,title,year,imdb=8,votes=100000,rt=null,genres=[],provider='Example Streamer',type='FLATRATE',objectType='MOVIE'}){
   return {
     id,
-    objectType:'MOVIE',
+    objectType,
     content:{
       title,
       shortDescription:'',
@@ -236,4 +236,30 @@ test('filmography availability matching normalizes punctuation in verified title
     {id:'movie',title:'Once Upon a Time in Hollywood',year:2019,mediaType:'MOVIE',offers:[]}
   ]);
   assert.equal(match?.id,'movie');
+});
+
+
+test('explicit TV-show search prefers the series over a same-name movie', async () => {
+  const res=await withCatalog([
+    {node:jwNode({id:'office-movie',title:'The Office',year:2015,objectType:'MOVIE'})},
+    {node:jwNode({id:'office-show',title:'The Office',year:2005,objectType:'SHOW',provider:'Peacock'})}
+  ],'The Office TV show');
+  assert.equal(res.statusCode,200);
+  assert.deepEqual(res.body.results.map(x=>x.id),['office-show']);
+  assert.equal(res.body.results[0].mediaType,'SHOW');
+  assert.equal(res.body.results[0].availabilityScope,'SERIES');
+});
+
+test('season-specific TV query preserves series identity but marks season availability unverified', async () => {
+  let upstreamSearch=null;
+  const res=await withCatalog([
+    {node:jwNode({id:'office-show',title:'The Office',year:2005,objectType:'SHOW',provider:'Peacock'})}
+  ],'The Office season 2',body=>{upstreamSearch=body.variables.search;});
+  assert.equal(res.statusCode,200);
+  assert.equal(upstreamSearch,'The Office');
+  assert.equal(res.body.parsed.requestedSeason,2);
+  assert.equal(res.body.results[0].mediaType,'SHOW');
+  assert.equal(res.body.results[0].requestedSeason,2);
+  assert.equal(res.body.results[0].seasonAvailabilityStatus,'UNKNOWN');
+  assert.deepEqual(res.body.results[0].seasonOffers,[]);
 });

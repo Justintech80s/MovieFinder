@@ -36,3 +36,10 @@ test('enforces provider and offer-type constraints together', () => {
   assert.equal(matchesHardConstraints(movie({offers:[{provider:'Tubi',type:'ADS'}]}), {freeOnly:true}), true);
   assert.equal(matchesHardConstraints(movie({offers:[{provider:'Prime Video',type:'RENT'}]}), {provider:'Prime Video',rentOnly:true}), true);
 });
+
+
+test('enforces explicit movie versus TV-series media type', () => {
+  assert.equal(matchesHardConstraints(movie({mediaType:'SHOW'}),{mediaType:'SHOW'}),true);
+  assert.equal(matchesHardConstraints(movie({mediaType:'MOVIE'}),{mediaType:'SHOW'}),false);
+  assert.equal(matchesHardConstraints(movie({mediaType:'SHOW'}),{mediaType:'MOVIE'}),false);
+});

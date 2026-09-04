@@ -64,3 +64,18 @@ test('plain filmography wording selects complete view', () => {
   assert.equal(p.role, 'all');
   assert.equal(p.filmographyView, 'complete');
 });
+
+
+test('parses explicit TV-series intent and removes it from title identity', () => {
+  const p=parseIntent('The Office TV show');
+  assert.equal(p.kind,'catalog');
+  assert.equal(p.mediaType,'SHOW');
+});
+
+test('parses requested TV season number without treating it as a release year', () => {
+  const p=parseIntent('The Office season 2');
+  assert.equal(p.mediaType,'SHOW');
+  assert.equal(p.requestedSeason,2);
+  assert.equal(p.yearMin,null);
+  assert.equal(p.yearMax,null);
+});
