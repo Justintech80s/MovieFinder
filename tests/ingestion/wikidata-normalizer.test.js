@@ -76,3 +76,38 @@ test('normalizer deduplicates identical relations', () => {
   const result = normalizeWikidataBatch({ entities, retrievedAt: '2026-09-02T08:00:00.000Z' });
   assert.equal(result.relations.filter(r => r.relationType === 'DIRECTED').length, 1);
 });
+
+
+test('normalizer stores theme and influence relationships with provenance', () => {
+  const entities={
+    Q100:{
+      id:'Q100',
+      labels:{en:{value:'Example Film'}},
+      claims:{
+        P31:itemClaim('Q11424'),
+        P921:itemClaim('Q900'),
+        P737:itemClaim('Q901')
+      }
+    },
+    Q900:{id:'Q900',labels:{en:{value:'Surveillance'}},claims:{}},
+    Q901:{id:'Q901',labels:{en:{value:'Blow-Up'}},claims:{P31:itemClaim('Q11424')}}
+  };
+  const result=normalizeWikidataBatch({entities,retrievedAt:'2026-09-04T18:30:00.000Z'});
+  const theme=result.relations.find(r=>r.relationType==='HAS_THEME');
+  const influence=result.relations.find(r=>r.relationType==='INFLUENCED_BY');
+  assert.equal(theme.fromCanonicalKey,'wikidata:Q100');
+  assert.equal(theme.toCanonicalKey,'wikidata:Q900');
+  assert.equal(influence.fromCanonicalKey,'wikidata:Q100');
+  assert.equal(influence.toCanonicalKey,'wikidata:Q901');
+  assert.equal(influence.source.source,'wikidata');
+});
+
+test('normalizer classifies known genre and country targets as structured graph entities', () => {
+  const entities={
+    Q700:{id:'Q700',labels:{en:{value:'Crime film'}},claims:{P31:itemClaim('Q201658')}},
+    Q800:{id:'Q800',labels:{en:{value:'United States of America'}},claims:{P31:itemClaim('Q6256')}}
+  };
+  const result=normalizeWikidataBatch({entities,retrievedAt:'2026-09-04T18:30:00.000Z'});
+  assert.equal(result.entities.find(e=>e.canonicalKey==='wikidata:Q700').entityType,'Genre');
+  assert.equal(result.entities.find(e=>e.canonicalKey==='wikidata:Q800').entityType,'Country');
+});
