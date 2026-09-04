@@ -320,3 +320,94 @@ test('season lookup keeps UNKNOWN when upstream cannot expose season-specific da
     assert.deepEqual(res.body.results[0].seasonOffers,[]);
   }finally{globalThis.fetch=previousFetch;}
 });
+
+
+test('episode lookup attaches only verified exact-episode offers', async () => {
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async(_url,options)=>{
+    const body=JSON.parse(options.body);
+    if(body.query.includes('GetTitleEpisodes')){
+      return {ok:true,status:200,json:async()=>({data:{node:{
+        seasons:[{seasonNumber:2,episodes:[
+          {episodeNumber:1,offers:[{monetizationType:'FLATRATE',standardWebURL:'https://example.com/office-s2e1',package:{clearName:'Peacock'}}]},
+          {episodeNumber:2,offers:[{monetizationType:'BUY',standardWebURL:'https://example.com/office-s2e2',package:{clearName:'Apple TV Store'}}]}
+        ]}]
+      }}})};
+    }
+    if(body.query.includes('GetTitleSeasons')) return {ok:true,status:200,json:async()=>({data:{node:{seasons:[]}}})};
+    return {ok:true,status:200,json:async()=>({data:{popularTitles:{edges:[
+      {node:jwNode({id:'office-show',title:'The Office',year:2005,objectType:'SHOW',provider:'Peacock'})}
+    ]}}})};
+  };
+  try{
+    const res=responseRecorder();
+    await handler({method:'GET',query:{q:'The Office season 2 episode 1'},headers:{}},res);
+    assert.equal(res.statusCode,200);
+    assert.equal(res.body.results[0].episodeAvailabilityStatus,'VERIFIED');
+    assert.deepEqual(res.body.results[0].episodeOffers.map(x=>x.provider),['Peacock']);
+  }finally{globalThis.fetch=previousFetch;}
+});
+
+test('episode lookup keeps UNKNOWN for nonexistent exact episode', async () => {
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async(_url,options)=>{
+    const body=JSON.parse(options.body);
+    if(body.query.includes('GetTitleEpisodes')){
+      return {ok:true,status:200,json:async()=>({data:{node:{seasons:[{seasonNumber:2,episodes:[{episodeNumber:1,offers:[]}]}]}}})};
+    }
+    if(body.query.includes('GetTitleSeasons')) return {ok:true,status:200,json:async()=>({data:{node:{seasons:[]}}})};
+    return {ok:true,status:200,json:async()=>({data:{popularTitles:{edges:[
+      {node:jwNode({id:'office-show',title:'The Office',year:2005,objectType:'SHOW',provider:'Peacock'})}
+    ]}}})};
+  };
+  try{
+    const res=responseRecorder();
+    await handler({method:'GET',query:{q:'The Office season 2 episode 99'},headers:{}},res);
+    assert.equal(res.statusCode,200);
+    assert.equal(res.body.results[0].episodeAvailabilityStatus,'UNKNOWN');
+    assert.deepEqual(res.body.results[0].episodeOffers,[]);
+  }finally{globalThis.fetch=previousFetch;}
+});
+
+test('episode lookup applies requested provider constraints to exact-episode offers', async () => {
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async(_url,options)=>{
+    const body=JSON.parse(options.body);
+    if(body.query.includes('GetTitleEpisodes')){
+      return {ok:true,status:200,json:async()=>({data:{node:{seasons:[{seasonNumber:2,episodes:[{episodeNumber:1,offers:[
+        {monetizationType:'FLATRATE',standardWebURL:'https://example.com/peacock',package:{clearName:'Peacock'}},
+        {monetizationType:'BUY',standardWebURL:'https://example.com/apple',package:{clearName:'Apple TV Store'}}
+      ]}]}]}}})};
+    }
+    if(body.query.includes('GetTitleSeasons')) return {ok:true,status:200,json:async()=>({data:{node:{seasons:[]}}})};
+    return {ok:true,status:200,json:async()=>({data:{popularTitles:{edges:[
+      {node:jwNode({id:'office-show',title:'The Office',year:2005,objectType:'SHOW',provider:'Peacock'})}
+    ]}}})};
+  };
+  try{
+    const res=responseRecorder();
+    await handler({method:'GET',query:{q:'The Office season 2 episode 1 on Peacock'},headers:{}},res);
+    assert.equal(res.statusCode,200);
+    assert.deepEqual(res.body.results[0].episodeOffers.map(x=>x.provider),['Peacock']);
+  }finally{globalThis.fetch=previousFetch;}
+});
+
+test('episode lookup upstream failure stays UNKNOWN and does not borrow season offers', async () => {
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async(_url,options)=>{
+    const body=JSON.parse(options.body);
+    if(body.query.includes('GetTitleEpisodes')) return {ok:false,status:503,json:async()=>({})};
+    if(body.query.includes('GetTitleSeasons')) return {ok:true,status:200,json:async()=>({data:{node:{seasons:[{seasonNumber:2,offers:[{monetizationType:'FLATRATE',package:{clearName:'Peacock'}}]}]}}})};
+    return {ok:true,status:200,json:async()=>({data:{popularTitles:{edges:[
+      {node:jwNode({id:'office-show',title:'The Office',year:2005,objectType:'SHOW',provider:'Peacock'})}
+    ]}}})};
+  };
+  try{
+    const res=responseRecorder();
+    await handler({method:'GET',query:{q:'The Office season 2 episode 1'},headers:{}},res);
+    assert.equal(res.statusCode,200);
+    assert.equal(res.body.results[0].seasonAvailabilityStatus,'VERIFIED');
+    assert.equal(res.body.results[0].episodeAvailabilityStatus,'UNKNOWN');
+    assert.deepEqual(res.body.results[0].episodeOffers,[]);
+  }finally{globalThis.fetch=previousFetch;}
+});
