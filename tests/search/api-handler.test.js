@@ -411,3 +411,35 @@ test('episode lookup upstream failure stays UNKNOWN and does not borrow season o
     assert.deepEqual(res.body.results[0].episodeOffers,[]);
   }finally{globalThis.fetch=previousFetch;}
 });
+
+
+test('search handler consumes environment-driven rate limit settings', async () => {
+  const searchHandler=createSearchHandler({
+    env:{SEARCH_RATE_LIMIT:'1',SEARCH_RATE_WINDOW_MS:'60000'},
+    liveOrchestrator:{async search({parsedIntent}){return {parsed:parsedIntent,results:[]};}},
+    analyticsStore:{enabled:false,insertEvent:async()=>false},
+    logger:{warn(){}}
+  });
+  const first=responseRecorder();
+  await searchHandler({method:'GET',query:{q:'Inception'},headers:{},socket:{remoteAddress:'1.2.3.4'}},first);
+  assert.equal(first.statusCode,200);
+
+  const second=responseRecorder();
+  await searchHandler({method:'GET',query:{q:'The Godfather'},headers:{},socket:{remoteAddress:'1.2.3.4'}},second);
+  assert.equal(second.statusCode,429);
+  assert.equal(second.body.code,'RATE_LIMITED');
+});
+
+test('invalid runtime search configuration fails safely without exposing env values', async () => {
+  const searchHandler=createSearchHandler({
+    env:{SEARCH_RATE_LIMIT:'bad-secret-value'},
+    liveOrchestrator:{async search(){throw new Error('should not execute');}},
+    analyticsStore:{enabled:false,insertEvent:async()=>false},
+    logger:{warn(){}}
+  });
+  const res=responseRecorder();
+  await searchHandler({method:'GET',query:{q:'Inception'},headers:{}},res);
+  assert.equal(res.statusCode,503);
+  assert.equal(res.body.code,'BACKEND_MISCONFIGURED');
+  assert.doesNotMatch(JSON.stringify(res.body),/bad-secret-value/);
+});
