@@ -49,3 +49,51 @@ test('deduplicates the same work within a role but keeps cross-role credits sepa
     `${normalizeCreditBindings(bindings, 'director')[0].workId}:director`
   );
 });
+
+
+test('person resolution retries a transient Wikidata failure before succeeding', async () => {
+  const { resolvePerson } = await import('../../lib/search/people.js');
+  const previousFetch=globalThis.fetch;
+  let attempts=0;
+  globalThis.fetch=async()=>{
+    attempts+=1;
+    if(attempts===1) return {ok:false,status:503,json:async()=>({})};
+    return {ok:true,status:200,json:async()=>({search:[{id:'Q3772',label:'Quentin Tarantino',description:'American filmmaker'}]})};
+  };
+  try{
+    const person=await resolvePerson('Quentin Tarantino');
+    assert.equal(person.id,'Q3772');
+    assert.equal(attempts,2);
+  }finally{
+    globalThis.fetch=previousFetch;
+  }
+});
+
+test('all-role person credits preserve successful roles when one Wikidata role query fails', async () => {
+  const { resolvePersonCredits } = await import('../../lib/search/people.js');
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async(url)=>{
+    const value=String(url);
+    if(value.includes('wbsearchentities')){
+      return {ok:true,status:200,json:async()=>({search:[{id:'Q3772',label:'Quentin Tarantino'}]})};
+    }
+    const decoded=decodeURIComponent(value);
+    if(decoded.includes('wdt:P162')) return {ok:false,status:503,json:async()=>({})};
+    const roleTitle=decoded.includes('wdt:P57')?'Director Film':decoded.includes('wdt:P58')?'Writer Film':'Cast Film';
+    const workId=decoded.includes('wdt:P57')?'Q1':decoded.includes('wdt:P58')?'Q2':'Q3';
+    return {ok:true,status:200,json:async()=>({results:{bindings:[{
+      work:{value:`http://www.wikidata.org/entity/${workId}`},
+      workLabel:{value:roleTitle},
+      date:{value:'1994-01-01T00:00:00Z'}
+    }]}})};
+  };
+  try{
+    const result=await resolvePersonCredits('Quentin Tarantino','all');
+    assert.equal(result.person.id,'Q3772');
+    assert.equal(result.partial,true);
+    assert.deepEqual(result.failedRoles,['producer']);
+    assert.deepEqual(result.credits.map(x=>x.role).sort(),['cast','director','writer']);
+  }finally{
+    globalThis.fetch=previousFetch;
+  }
+});
