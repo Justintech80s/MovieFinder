@@ -18,6 +18,8 @@ const JW='https://apis.justwatch.com/graphql';
 const JUSTWATCH_TIMEOUT_MS=8_000;
 const JUSTWATCH_CACHE_TTL_MS=5*60*1000;
 const justWatchCache=new Map();
+export const JUSTWATCH_EPISODE_QUERY=`query GetTitleEpisodes($id:ID!,$country:Country!,$language:Language!){node(id:$id){... on Show{seasons{seasonNumber episodes{episodeNumber offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName icon}}}}}}}`;
+
 export const JUSTWATCH_SEASON_QUERY=`query GetTitleSeasons($id:ID!,$country:Country!,$language:Language!){node(id:$id){... on Show{seasons{seasonNumber offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName icon}}}}}}`;
 
 export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$language:Language!,$first:Int!,$search:String!){popularTitles(country:$country,first:$first,filter:{searchQuery:$search}){edges{node{id objectType content(country:$country,language:$language){title shortDescription originalReleaseYear fullPath posterUrl genres{shortName} scoring{imdbScore imdbVotes tomatoMeter}} offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName icon}}}}}}`;
@@ -47,6 +49,23 @@ async function jwSearch(search,first=60){
   }finally{
     clearTimeout(timeout);
   }
+}
+
+async function jwEpisodeOffers(id,seasonNumber,episodeNumber){
+  if(!id||!Number.isInteger(Number(seasonNumber))||!Number.isInteger(Number(episodeNumber))) return null;
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),JUSTWATCH_TIMEOUT_MS);
+  try{
+    const r=await fetch(JW,{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({query:JUSTWATCH_EPISODE_QUERY,variables:{id,country:'US',language:'en'}}),signal:controller.signal});
+    if(!r.ok) return null;
+    const d=await r.json();
+    if(d.errors?.length) return null;
+    const season=(d.data?.node?.seasons||[]).find(item=>Number(item?.seasonNumber)===Number(seasonNumber));
+    const episode=(season?.episodes||[]).find(item=>Number(item?.episodeNumber)===Number(episodeNumber));
+    if(!episode) return null;
+    const checkedAt=new Date().toISOString();
+    return dedupeOffers(normalizeOffers((episode.offers||[]).map(o=>({provider:o.package?.clearName||o.package?.shortName||o.package?.technicalName,providerLogo:o.package?.icon,type:o.monetizationType,price:o.retailPriceValue??o.retailPrice,currency:o.currency,quality:o.presentationType,url:o.standardWebURL})),{checkedAt,source:'JustWatch episode availability'}));
+  }catch{return null;}finally{clearTimeout(timeout);}
 }
 
 async function jwSeasonOffers(id,seasonNumber){
@@ -165,12 +184,19 @@ async function deterministicApplicationSearch({query='',parsedIntent={}}={}){
       if(movie.mediaType!=='SHOW') return movie;
       const rawSeasonOffers=await jwSeasonOffers(movie.id,parsed.requestedSeason);
       const seasonOffers=rawSeasonOffers?filterOffers(rawSeasonOffers,parsed):[];
+      let episodeOffers=[];
+      let episodeAvailabilityStatus='UNKNOWN';
+      if(parsed.requestedEpisode!=null){
+        const rawEpisodeOffers=await jwEpisodeOffers(movie.id,parsed.requestedSeason,parsed.requestedEpisode);
+        episodeOffers=rawEpisodeOffers?filterOffers(rawEpisodeOffers,parsed):[];
+        episodeAvailabilityStatus=episodeOffers.length?'VERIFIED':'UNKNOWN';
+      }
       return {
         ...movie,
         requestedSeason:parsed.requestedSeason,
         seasonAvailabilityStatus:seasonOffers.length?'VERIFIED':'UNKNOWN',
         seasonOffers,
-        ...(parsed.requestedEpisode!=null?{requestedEpisode:parsed.requestedEpisode,episodeAvailabilityStatus:'UNKNOWN',episodeOffers:[]}: {})
+        ...(parsed.requestedEpisode!=null?{requestedEpisode:parsed.requestedEpisode,episodeAvailabilityStatus,episodeOffers}: {})
       };
     }));
   }
