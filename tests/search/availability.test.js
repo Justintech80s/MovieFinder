@@ -65,3 +65,29 @@ test('uses supplied future dates for UPCOMING and never guesses when future data
   assert.equal(unknown.status, 'UNKNOWN');
   assert.equal(unknown.availableFrom, null);
 });
+
+
+test('normalizes relative provider icon paths into usable HTTPS URLs', () => {
+  const [offer] = normalizeOffers([
+    { provider:'Netflix', type:'flatrate', providerLogo:'/icon/207360008/s100/netflix.png' }
+  ]);
+  assert.equal(offer.providerLogo,'https://images.justwatch.com/icon/207360008/s100/netflix.png');
+});
+
+test('deduplicates provider/type offers while keeping lowest price and available qualities', async () => {
+  const { dedupeOffers } = await import('../../lib/search/availability.js');
+  const offers = dedupeOffers(normalizeOffers([
+    { provider:'Amazon Video', type:'rent', price:4.99, quality:'HD', url:'https://example.com/hd' },
+    { provider:'Amazon Video', type:'rent', price:3.99, quality:'SD', url:'https://example.com/sd' },
+    { provider:'Amazon Video', type:'rent', price:5.99, quality:'4K', url:'https://example.com/4k' }
+  ]));
+  assert.equal(offers.length,1);
+  assert.equal(offers[0].price,3.99);
+  assert.deepEqual(offers[0].qualities,['SD','HD','4K']);
+  assert.equal(offers[0].url,'https://example.com/sd');
+});
+
+test('rejects unsafe offer URLs from normalized availability data', () => {
+  const [offer] = normalizeOffers([{ provider:'Example', type:'buy', price:9.99, url:'javascript:alert(1)' }]);
+  assert.equal(offer.url,null);
+});
