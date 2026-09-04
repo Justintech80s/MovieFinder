@@ -19,3 +19,10 @@ test('MovieFinder filters already-returned offers without making another search 
   assert.match(html,/applyFilters/i);
   assert.match(html,/render\(currentResults/i);
 });
+
+
+test('MovieFinder quality filter matches grouped quality arrays', async () => {
+  const html=await readFile(new URL('../../index.html',import.meta.url),'utf8');
+  assert.match(html,/offerQualities/);
+  assert.match(html,/includes\(filterState\.quality\.toUpperCase\(\)\)/);
+});
