@@ -41,7 +41,8 @@ function jwNode({id,title,year,imdb=8,votes=100000,rt=null,genres=[],provider='E
 async function withCatalog(edges,query,onRequest=()=>{}){
   const previousFetch=globalThis.fetch;
   globalThis.fetch=async(_url,options)=>{
-    onRequest(JSON.parse(options.body));
+    const requestBody=JSON.parse(options.body);
+    if(requestBody.variables?.search!==undefined) onRequest(requestBody);
     return {ok:true,status:200,json:async()=>({data:{popularTitles:{edges}}})};
   };
   try {
