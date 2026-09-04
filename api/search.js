@@ -57,6 +57,7 @@ function mapNode(n){
     id:n.id,title:c.title,year:c.originalReleaseYear||null,mediaType:n.objectType==='SHOW'?'SHOW':'MOVIE',description:c.shortDescription||'',
     genres:(c.genres||[]).map(g=>g?.shortName).filter(Boolean),poster:poster(c.posterUrl),
     ratings:{imdb:c.scoring?.imdbScore??null,rottenTomatoes:c.scoring?.tomatoMeter??null,imdbVotes:c.scoring?.imdbVotes??null},offers,
+    availabilityScope:n.objectType==='SHOW'?'SERIES':'TITLE',
     streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),justwatchUrl:c.fullPath?`https://www.justwatch.com${c.fullPath}`:null
   };
 }
@@ -90,6 +91,8 @@ export function selectAvailabilityMatch(credit={},movies=[]){
 function catalogTitle(raw=''){
   return String(raw)
     .replace(/^(?:where can i (?:watch|find)|find me|show me|give me)\s+/i,'')
+    .replace(/\s+season\s+\d{1,2}\b.*$/i,'')
+    .replace(/\s+(?:tv\s+show|tv\s+series|television\s+series|series)\b.*$/i,'')
     .replace(/\s+(?:for\s+free|free|available\s+on\b.*|to\s+stream\b.*|streaming\b.*|rent(?:al|ing)?\b.*|buy\b.*|purchase\b.*)$/i,'')
     .replace(/[?.!]+$/,'')
     .trim();
@@ -139,6 +142,14 @@ async function deterministicApplicationSearch({query='',parsedIntent={}}={}){
     results=results.map(movie=>({...movie,best:bestOffer(movie.offers),freeAvailable:movie.offers.some(o=>['FREE','ADS'].includes(o.type))}));
   }
   results=results.filter(movie=>matchesHardConstraints(movie,parsed));
+  if(parsed.requestedSeason!=null){
+    results=results.map(movie=>movie.mediaType==='SHOW'?{
+      ...movie,
+      requestedSeason:parsed.requestedSeason,
+      seasonAvailabilityStatus:'UNKNOWN',
+      seasonOffers:[]
+    }:movie);
+  }
   results=rankResults(results,parsed).slice(0,40);
   return {parsed,results};
 }
