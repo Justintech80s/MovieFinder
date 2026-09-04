@@ -97,3 +97,55 @@ test('all-role person credits preserve successful roles when one Wikidata role q
     globalThis.fetch=previousFetch;
   }
 });
+
+
+test('person resolution prefers exact film-industry match over unrelated exact-name entity', async () => {
+  const { resolvePerson } = await import('../../lib/search/people.js');
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async()=>({ok:true,status:200,json:async()=>({search:[
+    {id:'QX',label:'Martin Scorsese',description:'American businessman'},
+    {id:'Q41148',label:'Martin Scorsese',description:'American film director, producer, screenwriter and actor'}
+  ]})});
+  try{
+    const person=await resolvePerson('Martin Scorsese');
+    assert.equal(person.id,'Q41148');
+  }finally{
+    globalThis.fetch=previousFetch;
+  }
+});
+
+test('person resolution matches accent-insensitive alternate spelling', async () => {
+  const { resolvePerson } = await import('../../lib/search/people.js');
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async()=>({ok:true,status:200,json:async()=>({search:[
+    {id:'Q1',label:'Zoë Kravitz',description:'American actress and filmmaker'}
+  ]})});
+  try{
+    const person=await resolvePerson('Zoe Kravitz');
+    assert.equal(person.id,'Q1');
+  }finally{
+    globalThis.fetch=previousFetch;
+  }
+});
+
+test('person resolution falls back to Wikidata entity lookup when search results are empty', async () => {
+  const { resolvePerson } = await import('../../lib/search/people.js');
+  const previousFetch=globalThis.fetch;
+  let calls=0;
+  globalThis.fetch=async(url)=>{
+    calls+=1;
+    const value=String(url);
+    if(value.includes('wbsearchentities')) return {ok:true,status:200,json:async()=>({search:[]})};
+    if(value.includes('wbgetentities')) return {ok:true,status:200,json:async()=>({entities:{
+      Q3772:{id:'Q3772',labels:{en:{value:'Quentin Tarantino'}},descriptions:{en:{value:'American filmmaker and actor'}}}
+    }})};
+    return {ok:true,status:200,json:async()=>({search:[]})};
+  };
+  try{
+    const person=await resolvePerson('Quentin Tarantino',{fallbackEntityIds:['Q3772']});
+    assert.equal(person.id,'Q3772');
+    assert.equal(calls>=2,true);
+  }finally{
+    globalThis.fetch=previousFetch;
+  }
+});
