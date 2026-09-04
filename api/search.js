@@ -13,6 +13,7 @@ import { createAnalyticsStore } from '../lib/analytics/store.js';
 import { buildSearchEvent, recordEventBestEffort } from '../lib/analytics/events.js';
 import { trackMovieOfferUrls } from '../lib/analytics/outbound.js';
 import { applyApiSecurityHeaders, createMemoryRateLimiter, requestClientKey, validateSearchQuery } from '../lib/security/api-security.js';
+import { readRuntimeConfig } from '../lib/config/runtime-config.js';
 
 const JW='https://apis.justwatch.com/graphql';
 const JUSTWATCH_TIMEOUT_MS=8_000;
@@ -235,7 +236,7 @@ export function createSearchHandler({
   analyticsStore=createAnalyticsStore(),
   analyticsSecret=process.env.ANALYTICS_ID_SECRET,
   outboundSecret=process.env.OUTBOUND_LINK_SECRET,
-  rateLimiter=createMemoryRateLimiter(),
+  rateLimiter=null,
   liveOrchestrator=null,
   graphStore=null,
   graphStoreFactory=createSupabaseLiveGraphStore,
@@ -244,6 +245,17 @@ export function createSearchHandler({
   now=()=>new Date(),
   logger=console
 }={}){
+  let runtimeConfig=null;
+  let runtimeConfigError=false;
+  try{
+    runtimeConfig=readRuntimeConfig(env);
+  }catch{
+    runtimeConfigError=true;
+  }
+  const limiter=rateLimiter||createMemoryRateLimiter({
+    limit:runtimeConfig?.searchRateLimit||60,
+    windowMs:runtimeConfig?.searchRateWindowMs||60000
+  });
   const orchestrator=liveOrchestrator||buildDefaultLiveOrchestrator({graphStore,graphStoreFactory,modelRouter,env});
 
   return async function handler(req,res){
@@ -252,6 +264,7 @@ export function createSearchHandler({
     let identity=null;
 
     applyApiSecurityHeaders(res);
+    if(runtimeConfigError) return res.status(503).json({error:'MovieFinder backend misconfigured',code:'BACKEND_MISCONFIGURED'});
 
     const method=String(req?.method||'GET').toUpperCase();
     if(method!=='GET'){
@@ -266,7 +279,7 @@ export function createSearchHandler({
     }
     q=validation.query;
 
-    const limitResult=await rateLimiter?.consume?.(requestClientKey(req));
+    const limitResult=await limiter?.consume?.(requestClientKey(req));
     if(limitResult&&limitResult.allowed===false){
       if(limitResult.retryAfterSeconds) res.setHeader?.('Retry-After',String(limitResult.retryAfterSeconds));
       return res.status(429).json({error:'Too many requests',code:'RATE_LIMITED'});
