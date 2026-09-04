@@ -91,3 +91,24 @@ test('rejects unsafe offer URLs from normalized availability data', () => {
   const [offer] = normalizeOffers([{ provider:'Example', type:'buy', price:9.99, url:'javascript:alert(1)' }]);
   assert.equal(offer.url,null);
 });
+
+
+test('resolves JustWatch format placeholders in provider logos', () => {
+  const [offer] = normalizeOffers([
+    { provider:'Amazon Video', type:'rent', providerLogo:'https://images.justwatch.com/icon/340823436/s100/amazon.{format}' }
+  ]);
+  assert.equal(offer.providerLogo,'https://images.justwatch.com/icon/340823436/s100/amazon.png');
+});
+
+test('normalizes JustWatch quality codes for display and filtering', async () => {
+  const { dedupeOffers } = await import('../../lib/search/availability.js');
+  const offers=dedupeOffers(normalizeOffers([
+    {provider:'Amazon Video',type:'rent',price:4.99,quality:'_4K'},
+    {provider:'Amazon Video',type:'rent',price:5.99,quality:'HD'},
+    {provider:'Amazon DVD / Blu-ray',type:'buy',price:16.70,quality:'BLURAY_4K'}
+  ]));
+  assert.equal(offers[0].quality,'4K');
+  assert.deepEqual(offers[0].qualities,['HD','4K']);
+  assert.equal(offers[1].quality,'4K Blu-ray');
+  assert.deepEqual(offers[1].qualities,['4K Blu-ray']);
+});
