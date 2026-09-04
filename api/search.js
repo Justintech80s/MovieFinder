@@ -23,7 +23,8 @@ export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$langua
 async function jwSearch(search,first=60){
   const cacheKey=`${String(search).trim().toLowerCase()}|${first}`;
   const cached=justWatchCache.get(cacheKey);
-  if(cached&&Date.now()-cached.at<JUSTWATCH_CACHE_TTL_MS) return cached.value;
+  const fetchRef=globalThis.fetch;
+  if(cached&&cached.fetchRef===fetchRef&&Date.now()-cached.at<JUSTWATCH_CACHE_TTL_MS) return cached.value;
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),JUSTWATCH_TIMEOUT_MS);
   try{
@@ -32,7 +33,7 @@ async function jwSearch(search,first=60){
     const d=await r.json();
     if(d.errors?.length) throw new Error('availability source GraphQL error');
     const value=(d.data?.popularTitles?.edges||[]).map(e=>e.node);
-    justWatchCache.set(cacheKey,{at:Date.now(),value});
+    justWatchCache.set(cacheKey,{at:Date.now(),value,fetchRef});
     if(justWatchCache.size>100){
       const oldest=justWatchCache.keys().next().value;
       justWatchCache.delete(oldest);
