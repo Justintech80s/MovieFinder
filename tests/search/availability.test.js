@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeOffers, toTimelineEntry } from '../../lib/search/availability.js';
+import { normalizeOffers, toTimelineEntry, isAvailabilityFresh } from '../../lib/search/availability.js';
 
 test('adds frontend-compatible priceLabel for paid and free offers', () => {
   const [rent, free] = normalizeOffers([
@@ -111,4 +111,37 @@ test('normalizes JustWatch quality codes for display and filtering', async () =>
   assert.deepEqual(offers[0].qualities,['HD','4K']);
   assert.equal(offers[1].quality,'4K Blu-ray');
   assert.deepEqual(offers[1].qualities,['4K Blu-ray']);
+});
+
+
+test('marks generic provider homepages as non-title-specific destinations', () => {
+  const [offer]=normalizeOffers([
+    {provider:'Netflix',type:'flatrate',url:'https://www.netflix.com/'}
+  ]);
+  assert.equal(offer.url,'https://www.netflix.com/');
+  assert.equal(offer.linkSpecificity,'GENERIC');
+  assert.equal(offer.titleSpecificUrl,null);
+});
+
+test('preserves deep provider title links as title-specific destinations', () => {
+  const [offer]=normalizeOffers([
+    {provider:'Netflix',type:'flatrate',url:'https://www.netflix.com/title/70143836'}
+  ]);
+  assert.equal(offer.linkSpecificity,'TITLE');
+  assert.equal(offer.titleSpecificUrl,'https://www.netflix.com/title/70143836');
+});
+
+test('rejects credential-bearing and local-network provider URLs', () => {
+  const offers=normalizeOffers([
+    {provider:'Example',type:'buy',url:'https://user:pass@example.com/title/1'},
+    {provider:'Example',type:'buy',url:'http://127.0.0.1/title/1'},
+    {provider:'Example',type:'buy',url:'http://localhost/title/1'}
+  ]);
+  assert.deepEqual(offers.map(x=>x.url),[null,null,null]);
+});
+
+test('availability freshness expires current offers on a short TTL', () => {
+  assert.equal(isAvailabilityFresh('2026-09-04T16:00:00.000Z','2026-09-04T16:04:59.000Z'),true);
+  assert.equal(isAvailabilityFresh('2026-09-04T16:00:00.000Z','2026-09-04T16:05:01.000Z'),false);
+  assert.equal(isAvailabilityFresh(null,'2026-09-04T16:05:01.000Z'),false);
 });
