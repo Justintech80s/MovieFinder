@@ -66,7 +66,26 @@ function bestOffer(os=[]){
   return [...os].sort((a,b)=>(rank[a.type]??9)-(rank[b.type]??9)||(a.price??999)-(b.price??999))[0]||null;
 }
 
-function normTitle(value=''){return String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+function normTitle(value=''){return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+
+export function selectAvailabilityMatch(credit={},movies=[]){
+  const title=normTitle(credit.title);
+  if(!title) return null;
+  const exactTitle=(movies||[]).filter(movie=>movie?.mediaType==='MOVIE'&&normTitle(movie.title)===title);
+  if(!exactTitle.length) return null;
+  const year=Number(credit.year);
+  if(Number.isFinite(year)){
+    const yearMatches=exactTitle
+      .filter(movie=>!Number.isFinite(Number(movie.year))||Math.abs(Number(movie.year)-year)<=1)
+      .sort((a,b)=>{
+        const ay=Number.isFinite(Number(a.year))?Math.abs(Number(a.year)-year):99;
+        const by=Number.isFinite(Number(b.year))?Math.abs(Number(b.year)-year):99;
+        return ay-by;
+      });
+    return yearMatches[0]||null;
+  }
+  return exactTitle[0]||null;
+}
 
 function catalogTitle(raw=''){
   return String(raw)
@@ -79,10 +98,7 @@ function catalogTitle(raw=''){
 async function availabilityForCredit(credit,intent){
   const nodes=await jwSearch(credit.title,12);
   const mapped=nodes.map(mapNode).filter(x=>x.mediaType==='MOVIE');
-  const lowerTitle=String(credit.title||'').toLowerCase();
-  const exact=mapped.filter(x=>x.title?.toLowerCase()===lowerTitle&&(!credit.year||!x.year||Math.abs(x.year-credit.year)<=1));
-  const candidates=exact.length?exact:mapped.filter(x=>x.title?.toLowerCase()===lowerTitle);
-  const movie=candidates[0];
+  const movie=selectAvailabilityMatch(credit,mapped);
   if(!movie) return null;
   const matching=filterOffers(movie.offers,intent);
   if(!matching.length) return null;

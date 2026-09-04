@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import handler, { createSearchHandler } from '../../api/search.js';
+import handler, { createSearchHandler, selectAvailabilityMatch } from '../../api/search.js';
 
 function responseRecorder(){
   return {
@@ -210,4 +210,30 @@ test('exact title search suppresses loose title variants when an exact match exi
   ],'Inception');
   assert.equal(res.statusCode,200);
   assert.deepEqual(res.body.results.map(x=>x.title),['Inception']);
+});
+
+
+test('filmography availability matching prefers the verified release-year identity', () => {
+  const credit={title:'The Thing',year:1982,workId:'Q1'};
+  const match=selectAvailabilityMatch(credit,[
+    {id:'remake',title:'The Thing',year:2011,mediaType:'MOVIE',offers:[{provider:'Max',type:'FLATRATE'}]},
+    {id:'original',title:'The Thing',year:1982,mediaType:'MOVIE',offers:[{provider:'Peacock',type:'FLATRATE'}]}
+  ]);
+  assert.equal(match?.id,'original');
+});
+
+test('filmography availability matching refuses a same-title remake when credit year disagrees', () => {
+  const credit={title:'The Thing',year:1982,workId:'Q1'};
+  const match=selectAvailabilityMatch(credit,[
+    {id:'remake',title:'The Thing',year:2011,mediaType:'MOVIE',offers:[{provider:'Max',type:'FLATRATE'}]}
+  ]);
+  assert.equal(match,null);
+});
+
+test('filmography availability matching normalizes punctuation in verified titles', () => {
+  const credit={title:'Once Upon a Time… in Hollywood',year:2019,workId:'Q1'};
+  const match=selectAvailabilityMatch(credit,[
+    {id:'movie',title:'Once Upon a Time in Hollywood',year:2019,mediaType:'MOVIE',offers:[]}
+  ]);
+  assert.equal(match?.id,'movie');
 });
