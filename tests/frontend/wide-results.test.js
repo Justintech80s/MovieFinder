@@ -20,3 +20,18 @@ test('MovieFinder keeps support hidden until the Support button opens the overla
   assert.match(html,/data-support-close/i);
   assert.match(html,/♥ Support/i);
 });
+
+
+test('MovieFinder shows loading skeletons and cancels stale searches', async () => {
+  const html=await readFile(new URL('../../index.html',import.meta.url),'utf8');
+  assert.match(html,/skeleton-card/i);
+  assert.match(html,/AbortController/);
+  assert.match(html,/activeSearchController\.abort\(\)/);
+  assert.match(html,/Streaming availability is temporarily unavailable/i);
+});
+
+test('MovieFinder renders consolidated quality labels from deduplicated offers', async () => {
+  const html=await readFile(new URL('../../index.html',import.meta.url),'utf8');
+  assert.match(html,/qualityText/);
+  assert.match(html,/qualities\.join\(' \/ '\)/);
+});
