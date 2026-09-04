@@ -25,7 +25,7 @@ test('hybrid retriever preserves deterministic hard filters after candidate fusi
   });
   const result=await retriever.search({
     query:'1995 crime movies',
-    parsedIntent:{year:1995,genres:['Crime']}
+    parsedIntent:{yearMin:1995,yearMax:1995,genreWords:['Crime']}
   });
   assert.deepEqual(result.map(x=>x.title),['Heat']);
 });
