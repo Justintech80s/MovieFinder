@@ -79,3 +79,11 @@ test('parses requested TV season number without treating it as a release year', 
   assert.equal(p.yearMin,null);
   assert.equal(p.yearMax,null);
 });
+
+
+test('parses TV season and episode intent without treating episode number as title text', () => {
+  const p=parseIntent('The Office season 2 episode 1');
+  assert.equal(p.mediaType,'SHOW');
+  assert.equal(p.requestedSeason,2);
+  assert.equal(p.requestedEpisode,1);
+});
