@@ -263,3 +263,18 @@ test('season-specific TV query preserves series identity but marks season availa
   assert.equal(res.body.results[0].seasonAvailabilityStatus,'UNKNOWN');
   assert.deepEqual(res.body.results[0].seasonOffers,[]);
 });
+
+
+test('episode-specific TV query never promotes series offers to verified episode availability', async () => {
+  let upstreamSearch=null;
+  const res=await withCatalog([
+    {node:jwNode({id:'office-show',title:'The Office',year:2005,objectType:'SHOW',provider:'Peacock'})}
+  ],'The Office season 2 episode 1',body=>{upstreamSearch=body.variables.search;});
+  assert.equal(res.statusCode,200);
+  assert.equal(upstreamSearch,'The Office');
+  assert.equal(res.body.parsed.requestedSeason,2);
+  assert.equal(res.body.parsed.requestedEpisode,1);
+  assert.equal(res.body.results[0].requestedEpisode,1);
+  assert.equal(res.body.results[0].episodeAvailabilityStatus,'UNKNOWN');
+  assert.deepEqual(res.body.results[0].episodeOffers,[]);
+});
