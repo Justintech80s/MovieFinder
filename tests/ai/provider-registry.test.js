@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createProductionModelRouter } from '../../lib/ai/provider-registry.js';
+import { createProductionModelRouter, configuredProviderNames } from '../../lib/ai/provider-registry.js';
 
 function response(status, body) {
   return { ok: status >= 200 && status < 300, status, async json() { return body; } };
@@ -72,4 +72,14 @@ test('OpenAI failure falls through to Anthropic', async () => {
   const result = await router.run('cinema_reasoning', { prompt: 'reason' });
   assert.equal(result.provider, 'anthropic');
   assert.equal(result.output.content, 'fallback');
+});
+
+
+test('configured provider metadata returns names only and never keys', () => {
+  const names=configuredProviderNames({
+    env:{OPENAI_API_KEY:'secret',ANTHROPIC_API_KEY:'secret2'},
+    models:{openai:'gpt-test',anthropic:'claude-test'}
+  });
+  assert.deepEqual(names,['openai','anthropic']);
+  assert.doesNotMatch(JSON.stringify(names),/secret/);
 });
