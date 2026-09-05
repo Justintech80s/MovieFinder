@@ -123,3 +123,29 @@ test('parses broader natural-language movie discovery vocabulary',()=>{
     assert.equal(p.rankingIntent,ranking,query);
   }
 });
+
+
+test('unknown category phrases still become bounded discovery intent',()=>{
+  const p=parseIntent('best courtroom films');
+  assert.equal(p.kind,'discovery');
+  assert.equal(p.rankingIntent,'best');
+  assert.ok(p.concepts.includes('courtroom'));
+  assert.ok(p.discoveryTerms.includes('courtroom'));
+});
+
+test('generic about phrasing becomes discovery without hijacking known person filmography',()=>{
+  const p=parseIntent('movies about journalism');
+  assert.equal(p.kind,'discovery');
+  assert.ok(p.concepts.includes('journalism'));
+  const person=parseIntent('All Denzel Washington films');
+  assert.equal(person.kind,'person-filmography');
+  assert.equal(person.personName,'Denzel Washington');
+});
+
+test('generic discovery extraction strips ranking and media filler words',()=>{
+  const p=parseIntent('top political corruption movies');
+  assert.equal(p.kind,'discovery');
+  assert.ok(p.concepts.includes('political corruption'));
+  assert.ok(!p.discoveryTerms.includes('top'));
+  assert.ok(!p.discoveryTerms.includes('movies'));
+});
