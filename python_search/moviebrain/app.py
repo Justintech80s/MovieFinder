@@ -1,5 +1,6 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from .models import Credit
 from .person_search import run_person_search
@@ -56,10 +57,10 @@ async def ready():
 async def embed_query(payload: EmbedQueryPayload):
     text = payload.text.strip()
     if not text:
-        raise HTTPException(status_code=400, detail={"code": "INVALID_QUERY"})
+        return JSONResponse(status_code=400, content={"code": "INVALID_QUERY"})
     ml = app.state.cinema_ml
     if not getattr(ml, "available", False):
-        raise HTTPException(status_code=503, detail={"code": "ML_UNAVAILABLE"})
+        return JSONResponse(status_code=503, content={"code": "ML_UNAVAILABLE"})
     vectors = ml.embed_texts([text])
     vector = vectors[0] if isinstance(vectors, list) and vectors else None
     if (
@@ -67,7 +68,7 @@ async def embed_query(payload: EmbedQueryPayload):
         or len(vector) != 384
         or not all(isinstance(value, (int, float)) for value in vector)
     ):
-        raise HTTPException(status_code=503, detail={"code": "EMBEDDING_UNAVAILABLE"})
+        return JSONResponse(status_code=503, content={"code": "EMBEDDING_UNAVAILABLE"})
     return {"embedding": [float(value) for value in vector], "dimensions": 384}
 
 
