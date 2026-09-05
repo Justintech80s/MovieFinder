@@ -131,7 +131,9 @@ test('graph discovery results receive the same safe per-result AI explanation en
           {id:'movie:conversation',explanation:'The Conversation fits paranoid 1970s cinema through surveillance, institutional distrust, and subjective uncertainty.',themes:['surveillance','paranoia']}
         ]}}};
       }
-      return {provider:'openai',output:{model:'test-model',content:'Verified graph reasoning.'}};
+      return {provider:'openai',output:{model:'test-model',content:'Verified graph reasoning.',structuredData:{results:[
+        {id:'movie:conversation',explanation:'The Conversation fits paranoid 1970s cinema through surveillance, institutional distrust, and subjective uncertainty.',themes:['surveillance','paranoia']}
+      ]}}};
     }
   };
   const orchestrator=createLiveOrchestrator({graphStore:graphFixture(),lookupAvailability,modelRouter});
