@@ -29,3 +29,12 @@ test('semantic RPCs require a query embedding and use cosine distance',()=>{
   assert.match(sql,/query_embedding vector\(384\)/i);
   assert.match(sql,/1 - \(.*embedding <=> query_embedding\)/is);
 });
+
+
+test('catalog embedding metadata tracks model and refresh time',()=>{
+  const maintenance=fs.readFileSync(new URL('../../supabase/migrations/20260905_catalog_embedding_metadata.sql',import.meta.url),'utf8');
+  assert.match(maintenance,/add column if not exists embedding_model text/i);
+  assert.match(maintenance,/add column if not exists embedding_updated_at timestamptz/i);
+  assert.match(maintenance,/idx_movies_embedding_pending/i);
+  assert.match(maintenance,/idx_shows_embedding_pending/i);
+});
