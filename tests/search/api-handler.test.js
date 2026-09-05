@@ -443,3 +443,41 @@ test('invalid runtime search configuration fails safely without exposing env val
   assert.equal(res.body.code,'BACKEND_MISCONFIGURED');
   assert.doesNotMatch(JSON.stringify(res.body),/bad-secret-value/);
 });
+
+
+test('default production orchestrator uses configured Postgres full-text candidates for discovery', async () => {
+  let fullTextCalls=0;
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async(_url,options)=>{
+    const body=JSON.parse(options.body);
+    const search=body.variables?.search;
+    const edges=search==='Heat'
+      ? [{node:jwNode({id:'heat-live',title:'Heat',year:1995,provider:'Max'})}]
+      : [];
+    return {ok:true,status:200,json:async()=>({data:{popularTitles:{edges}}})};
+  };
+  try{
+    const searchHandler=createSearchHandler({
+      env:{SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'secret'},
+      graphStoreFactory:()=>null,
+      hybridSearchFactory:()=>({
+        async fullTextSearch(){
+          fullTextCalls+=1;
+          return [{id:'db-heat',title:'Heat',year:1995,mediaType:'MOVIE',description:'Crime drama'}];
+        }
+      }),
+      modelRouter:{async run(){throw new Error('AI optional');}},
+      analyticsStore:{enabled:false,insertEvent:async()=>false},
+      rateLimiter:{consume:()=>({allowed:true})},
+      logger:{warn(){}}
+    });
+    const res=responseRecorder();
+    await searchHandler({method:'GET',query:{q:'movies like Heat with surveillance themes'},headers:{}},res);
+    assert.equal(res.statusCode,200);
+    assert.equal(fullTextCalls,1);
+    assert.match(res.body.reasoningMode,/^hybrid/);
+    assert.equal(res.body.results[0].title,'Heat');
+  }finally{
+    globalThis.fetch=previousFetch;
+  }
+});

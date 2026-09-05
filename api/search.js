@@ -8,6 +8,7 @@ import { matchesHardConstraints } from '../lib/search/constraints.js';
 import { createLiveOrchestrator } from '../lib/search/live-orchestrator.js';
 import { createHybridRetriever } from '../lib/search/hybrid-retriever.js';
 import { createSupabaseLiveGraphStore } from '../lib/search/supabase-live-graph-store.js';
+import { createSupabaseHybridSearch } from '../lib/search/supabase-hybrid-search.js';
 import { createProductionModelRouter } from '../lib/ai/provider-registry.js';
 import { resolveAnalyticsIdentity } from '../lib/analytics/identity.js';
 import { createAnalyticsStore } from '../lib/analytics/store.js';
@@ -220,16 +221,19 @@ function productionModels(env=process.env){
 function buildDefaultLiveOrchestrator({
   graphStore=null,
   graphStoreFactory=createSupabaseLiveGraphStore,
+  hybridSearchFactory=createSupabaseHybridSearch,
   modelRouter=null,
   env=process.env
 }={}){
   const router=modelRouter||createProductionModelRouter({env,models:productionModels(env)});
   const liveGraphStore=graphStore||(typeof graphStoreFactory==='function'?graphStoreFactory({env}):null);
+  const postgresSearch=typeof hybridSearchFactory==='function'?hybridSearchFactory({env}):null;
   const hybridRetriever=createHybridRetriever({
     exactSearch:async ({query,parsedIntent})=>{
       const result=await deterministicApplicationSearch({query,parsedIntent});
       return Array.isArray(result?.results)?result.results:[];
-    }
+    },
+    fullTextSearch:postgresSearch?.fullTextSearch||null
   });
   return createLiveOrchestrator({
     graphStore:liveGraphStore,
@@ -248,6 +252,7 @@ export function createSearchHandler({
   liveOrchestrator=null,
   graphStore=null,
   graphStoreFactory=createSupabaseLiveGraphStore,
+  hybridSearchFactory=createSupabaseHybridSearch,
   modelRouter=null,
   env=process.env,
   now=()=>new Date(),
@@ -264,7 +269,7 @@ export function createSearchHandler({
     limit:runtimeConfig?.searchRateLimit||60,
     windowMs:runtimeConfig?.searchRateWindowMs||60000
   });
-  const orchestrator=liveOrchestrator||buildDefaultLiveOrchestrator({graphStore,graphStoreFactory,modelRouter,env});
+  const orchestrator=liveOrchestrator||buildDefaultLiveOrchestrator({graphStore,graphStoreFactory,hybridSearchFactory,modelRouter,env});
 
   return async function handler(req,res){
     let q='';
