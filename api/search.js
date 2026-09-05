@@ -233,7 +233,8 @@ function buildDefaultLiveOrchestrator({
       const result=await deterministicApplicationSearch({query,parsedIntent});
       return Array.isArray(result?.results)?result.results:[];
     },
-    fullTextSearch:postgresSearch?.fullTextSearch||null
+    fullTextSearch:postgresSearch?.fullTextSearch||null,
+    semanticSearch:postgresSearch?.semanticSearch||null
   });
   return createLiveOrchestrator({
     graphStore:liveGraphStore,
