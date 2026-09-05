@@ -53,6 +53,7 @@ test('maintainer batches missing movie embeddings through Cinema Brain and persi
 test('maintainer rejects malformed embedding batches without corrupting rows',async()=>{
   let updates=0;
   const fetchImpl=async(url,options={})=>{
+    if(String(url).includes('/rest/v1/shows?id=eq.')){patches+=1;return {ok:true,status:204,json:async()=>({})};}
     if(String(url).includes('/rest/v1/shows?')){
       return {ok:true,status:200,json:async()=>[
         {id:'s1',title:'Dark',first_release_year:2017,description:'Mystery series'}
@@ -134,7 +135,6 @@ test('maintainer refreshes rows embedded by a different model',async()=>{
         embeddings:[Array(384).fill(.4)],dimensions:384,model:'new/model'
       })};
     }
-    if(String(url).includes('/rest/v1/shows?id=eq.')){patches+=1;return {ok:true,status:204,json:async()=>({})};}
     throw new Error('unexpected '+url);
   };
   const maintainer=createCatalogEmbeddingMaintainer({
