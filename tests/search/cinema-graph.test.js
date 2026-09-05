@@ -31,3 +31,19 @@ test('legacy cinema concept scoring remains available', () => {
   const result = scoreCinemaRelations({ title: 'X', genres: ['crime'], tags: ['gritty'] }, { raw: 'gritty' });
   assert.ok(result.score > 0);
 });
+
+
+test('discovery concepts expand heist and car vocabulary for relation scoring',()=>{
+  assert.deepEqual(extractCinemaConcepts('best heist films'),['heist']);
+  assert.deepEqual(extractCinemaConcepts('car films'),['car']);
+  const heist=scoreCinemaRelations(
+    {title:'X',description:'A crew plans a bank robbery and getaway',genres:['crime'],tags:['caper']},
+    {raw:'best heist films',concepts:['heist']}
+  );
+  const car=scoreCinemaRelations(
+    {title:'Y',description:'Street racing and spectacular car chases',genres:['action'],tags:['automotive']},
+    {raw:'car films',concepts:['car']}
+  );
+  assert.ok(heist.score>0);
+  assert.ok(car.score>0);
+});
