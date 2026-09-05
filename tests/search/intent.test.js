@@ -87,3 +87,39 @@ test('parses TV season and episode intent without treating episode number as tit
   assert.equal(p.requestedSeason,2);
   assert.equal(p.requestedEpisode,1);
 });
+
+
+test('parses Best Heist Films as ranked discovery instead of a literal title search',()=>{
+  const p=parseIntent('Best Heist Films');
+  assert.equal(p.kind,'discovery');
+  assert.equal(p.mediaType,'MOVIE');
+  assert.equal(p.rankingIntent,'best');
+  assert.ok(p.concepts.includes('heist'));
+  assert.ok(p.discoveryTerms.includes('robbery'));
+});
+
+test('parses Car Films as automotive discovery',()=>{
+  const p=parseIntent('Car Films');
+  assert.equal(p.kind,'discovery');
+  assert.equal(p.mediaType,'MOVIE');
+  assert.ok(p.concepts.includes('car'));
+  assert.ok(p.discoveryTerms.includes('racing'));
+  assert.ok(p.discoveryTerms.includes('car chase'));
+});
+
+test('parses broader natural-language movie discovery vocabulary',()=>{
+  const cases=[
+    ['underrated prison escape movies','prison escape','underrated'],
+    ['great samurai films','samurai','best'],
+    ['best mob movies','mob','best'],
+    ['cult martial arts films','martial arts','cult'],
+    ['highest rated spy movies','spy','highest-rated'],
+    ['movies about serial killers','serial killer',null]
+  ];
+  for(const [query,concept,ranking] of cases){
+    const p=parseIntent(query);
+    assert.equal(p.kind,'discovery',query);
+    assert.ok(p.concepts.includes(concept),query);
+    assert.equal(p.rankingIntent,ranking,query);
+  }
+});
