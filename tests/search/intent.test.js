@@ -149,3 +149,25 @@ test('generic discovery extraction strips ranking and media filler words',()=>{
   assert.ok(!p.discoveryTerms.includes('top'));
   assert.ok(!p.discoveryTerms.includes('movies'));
 });
+
+
+test('simple conversational discovery wording is understood',()=>{
+  const cases=[
+    ['show me courtroom movies','courtroom'],
+    ['find car chase films','car'],
+    ['give me movies about journalism','journalism'],
+    ['I want political corruption movies','political corruption'],
+    ['recommend heist movies','heist']
+  ];
+  for(const [query,concept] of cases){
+    const p=parseIntent(query);
+    assert.equal(p.kind,'discovery',query);
+    assert.ok(p.concepts.includes(concept),query);
+  }
+});
+
+test('simple recommendation words do not become discovery concepts',()=>{
+  const p=parseIntent('recommend courtroom movies');
+  assert.deepEqual(p.concepts,['courtroom']);
+  assert.deepEqual(p.discoveryTerms,['courtroom']);
+});
