@@ -52,3 +52,43 @@ def test_ready_handles_unconfigured_optional_services():
     body = response.json()
     assert body["ready"] is True
     assert body["subsystems"]["python"]["status"] == "ready"
+
+
+def test_embed_query_returns_only_a_384_dimension_numeric_vector(monkeypatch):
+    class FakeML:
+        available = True
+        def embed_texts(self, texts):
+            assert texts == ["movies like Heat"]
+            return [[0.25] * 384]
+
+    monkeypatch.setattr(app.state, "cinema_ml", FakeML(), raising=False)
+    response = client.post("/embed-query", json={"text": "movies like Heat"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["dimensions"] == 384
+    assert len(body["embedding"]) == 384
+    assert all(isinstance(value, (int, float)) for value in body["embedding"])
+
+
+def test_embed_query_fails_safely_when_ml_is_disabled(monkeypatch):
+    class DisabledML:
+        available = False
+        def embed_texts(self, _texts):
+            raise AssertionError("disabled ML must not execute")
+
+    monkeypatch.setattr(app.state, "cinema_ml", DisabledML(), raising=False)
+    response = client.post("/embed-query", json={"text": "Heat"})
+    assert response.status_code == 503
+    assert response.json()["code"] == "ML_UNAVAILABLE"
+
+
+def test_embed_query_rejects_wrong_embedding_dimensions(monkeypatch):
+    class WrongSizeML:
+        available = True
+        def embed_texts(self, _texts):
+            return [[0.1] * 12]
+
+    monkeypatch.setattr(app.state, "cinema_ml", WrongSizeML(), raising=False)
+    response = client.post("/embed-query", json={"text": "Heat"})
+    assert response.status_code == 503
+    assert response.json()["code"] == "EMBEDDING_UNAVAILABLE"
