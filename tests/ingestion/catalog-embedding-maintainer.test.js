@@ -124,7 +124,8 @@ test('maintainer refreshes rows embedded by a different model',async()=>{
           id:'s1',title:'Dark',first_release_year:2017,description:'Mystery',
           updated_at:'2026-09-05T15:00:00.000Z',
           embedding_updated_at:'2026-09-05T17:00:00.000Z',
-          embedding_model:'old/model'
+          embedding_model:'old/model',
+          embedding:'[0.1,0.2]'
         }
       ]};
     }
@@ -159,7 +160,8 @@ test('maintainer skips fresh rows already embedded with current model',async()=>
           id:'m1',title:'Heat',release_year:1995,description:'Crime drama',
           updated_at:'2026-09-05T15:00:00.000Z',
           embedding_updated_at:'2026-09-05T17:00:00.000Z',
-          embedding_model:'current/model'
+          embedding_model:'current/model',
+          embedding:'[0.1,0.2]'
         }
       ]};
     }
