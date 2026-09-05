@@ -103,3 +103,21 @@ test('AI provider failure returns verified graph results without a 5xx-style fai
   assert.equal(result.results[0].title, 'The Conversation');
   assert.equal(result.ai, undefined);
 });
+
+
+test('AI structured explanations enrich verified hybrid results without changing facts', async () => {
+  const modelRouter={
+    async run(){
+      return {provider:'openai',output:{model:'test-model',content:'Detailed cinema analysis.',structuredData:{results:[
+        {id:'heat',explanation:'Heat is a landmark heist film because its robbery mechanics, professional-code theme, and Mann crime style reinforce the search intent.',themes:['professionalism','obsession'],connections:['crime procedural','urban noir']}
+      ]}}};
+    }
+  };
+  const hybridRetriever={async search(){return [{id:'heat',title:'Heat',year:1995,description:'A thief faces a detective.',genres:['Crime'],offers:[],checkedAt:'2026-09-05T18:00:00.000Z'}];}};
+  const orchestrator=createLiveOrchestrator({hybridRetriever,modelRouter});
+  const result=await orchestrator.search({query:'Best Heist Films',parsedIntent:{kind:'discovery',concepts:['heist'],discoveryTerms:['robbery'],rankingIntent:'best'}});
+  assert.equal(result.results[0].title,'Heat');
+  assert.match(result.results[0].searchExplanation,/landmark heist film/i);
+  assert.deepEqual(result.results[0].ai.themes,['professionalism','obsession']);
+  assert.equal(result.results[0].year,1995);
+});
