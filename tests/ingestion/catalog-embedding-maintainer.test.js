@@ -76,3 +76,106 @@ test('maintainer rejects malformed embedding batches without corrupting rows',as
   assert.deepEqual(result,{processed:1,updated:0,failed:1,mediaType:'shows'});
   assert.equal(updates,0);
 });
+
+
+test('maintainer refreshes stale rows when source content changed after embedding',async()=>{
+  const calls=[];
+  const fetchImpl=async(url,options={})=>{
+    calls.push({url:String(url),options});
+    if(String(url).includes('/rest/v1/movies?')){
+      return {ok:true,status:200,json:async()=>[
+        {
+          id:'m1',title:'Heat',release_year:1995,description:'Updated crime drama',
+          updated_at:'2026-09-05T17:30:00.000Z',
+          embedding_updated_at:'2026-09-05T16:00:00.000Z',
+          embedding_model:'sentence-transformers/all-MiniLM-L6-v2'
+        }
+      ]};
+    }
+    if(String(url)==='https://brain.example.com/embed-texts'){
+      return {ok:true,status:200,json:async()=>({
+        embeddings:[Array(384).fill(.3)],dimensions:384,model:'sentence-transformers/all-MiniLM-L6-v2'
+      })};
+    }
+    if(String(url).includes('/rest/v1/movies?id=eq.')){
+      return {ok:true,status:204,json:async()=>({})};
+    }
+    throw new Error('unexpected '+url);
+  };
+  const maintainer=createCatalogEmbeddingMaintainer({
+    fetchImpl,
+    env:{
+      SUPABASE_URL:'https://example.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY:'secret',
+      PYTHON_BRAIN_URL:'https://brain.example.com',
+      MOVIEFINDER_EMBEDDING_MODEL:'sentence-transformers/all-MiniLM-L6-v2'
+    }
+  });
+  const result=await maintainer.run({mediaType:'movies',batchSize:1});
+  assert.equal(result.updated,1);
+});
+
+test('maintainer refreshes rows embedded by a different model',async()=>{
+  let patches=0;
+  const fetchImpl=async(url,options={})=>{
+    if(String(url).includes('/rest/v1/shows?')){
+      return {ok:true,status:200,json:async()=>[
+        {
+          id:'s1',title:'Dark',first_release_year:2017,description:'Mystery',
+          updated_at:'2026-09-05T15:00:00.000Z',
+          embedding_updated_at:'2026-09-05T17:00:00.000Z',
+          embedding_model:'old/model'
+        }
+      ]};
+    }
+    if(String(url)==='https://brain.example.com/embed-texts'){
+      return {ok:true,status:200,json:async()=>({
+        embeddings:[Array(384).fill(.4)],dimensions:384,model:'new/model'
+      })};
+    }
+    if(String(url).includes('/rest/v1/shows?id=eq.')){patches+=1;return {ok:true,status:204,json:async()=>({})};}
+    throw new Error('unexpected '+url);
+  };
+  const maintainer=createCatalogEmbeddingMaintainer({
+    fetchImpl,
+    env:{
+      SUPABASE_URL:'https://example.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY:'secret',
+      PYTHON_BRAIN_URL:'https://brain.example.com',
+      MOVIEFINDER_EMBEDDING_MODEL:'new/model'
+    }
+  });
+  const result=await maintainer.run({mediaType:'shows',batchSize:1});
+  assert.equal(result.updated,1);
+  assert.equal(patches,1);
+});
+
+test('maintainer skips fresh rows already embedded with current model',async()=>{
+  let brainCalls=0;
+  const fetchImpl=async(url)=>{
+    if(String(url).includes('/rest/v1/movies?')){
+      return {ok:true,status:200,json:async()=>[
+        {
+          id:'m1',title:'Heat',release_year:1995,description:'Crime drama',
+          updated_at:'2026-09-05T15:00:00.000Z',
+          embedding_updated_at:'2026-09-05T17:00:00.000Z',
+          embedding_model:'current/model'
+        }
+      ]};
+    }
+    if(String(url).includes('/embed-texts')) brainCalls+=1;
+    return {ok:true,status:200,json:async()=>({})};
+  };
+  const maintainer=createCatalogEmbeddingMaintainer({
+    fetchImpl,
+    env:{
+      SUPABASE_URL:'https://example.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY:'secret',
+      PYTHON_BRAIN_URL:'https://brain.example.com',
+      MOVIEFINDER_EMBEDDING_MODEL:'current/model'
+    }
+  });
+  const result=await maintainer.run({mediaType:'movies',batchSize:1});
+  assert.deepEqual(result,{processed:0,updated:0,failed:0,mediaType:'movies'});
+  assert.equal(brainCalls,0);
+});
