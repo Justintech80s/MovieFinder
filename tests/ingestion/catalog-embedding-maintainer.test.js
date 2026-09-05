@@ -119,6 +119,7 @@ test('maintainer refreshes stale rows when source content changed after embeddin
 test('maintainer refreshes rows embedded by a different model',async()=>{
   let patches=0;
   const fetchImpl=async(url,options={})=>{
+    if(options.method==='PATCH'&&String(url).includes('/rest/v1/shows?')){patches+=1;return {ok:true,status:204,json:async()=>({})};}
     if(String(url).includes('/rest/v1/shows?')){
       return {ok:true,status:200,json:async()=>[
         {
