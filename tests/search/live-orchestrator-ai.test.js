@@ -146,3 +146,30 @@ test('graph discovery results receive the same safe per-result AI explanation en
   assert.deepEqual(result.results[0].ai.themes,['surveillance','paranoia']);
   assert.equal(result.results[0].offers[0].provider,'Max');
 });
+
+
+test('generic AI explanation cannot replace a richer grounded MovieFinder explanation', async () => {
+  const modelRouter={async run(){return {provider:'openai',output:{model:'test-model',structuredData:{results:[
+    {id:'heat',explanation:'This is a good movie.'}
+  ]}}};}};
+  const hybridRetriever={async search(){return [{
+    id:'heat',title:'Heat',year:1995,description:'A professional thief and detective collide during an armored-car robbery.',
+    genres:['Crime'],tags:['heist','robbery'],offers:[{provider:'Max',type:'FLATRATE'}],
+    checkedAt:'2026-09-05T18:00:00.000Z',ratings:{imdb:8.3,rottenTomatoes:83,imdbVotes:750000}
+  }];}};
+  const orchestrator=createLiveOrchestrator({hybridRetriever,modelRouter});
+  const result=await orchestrator.search({query:'Best Heist Films',parsedIntent:{kind:'discovery',concepts:['heist'],discoveryTerms:['robbery'],rankingIntent:'best'}});
+  assert.doesNotMatch(result.results[0].searchExplanation,/^This is a good movie\.?$/);
+  assert.match(result.results[0].searchExplanation,/IMDb 8\.3/);
+  assert.match(result.results[0].searchExplanation,/Max/);
+});
+
+test('substantive grounded AI explanation can replace deterministic explanation', async () => {
+  const modelRouter={async run(){return {provider:'openai',output:{model:'test-model',structuredData:{results:[
+    {id:'heat',explanation:'Heat is a landmark heist film because its robbery planning, professional criminal code, and police-versus-thief structure directly fit the requested heist concept.'}
+  ]}}};}};
+  const hybridRetriever={async search(){return [{id:'heat',title:'Heat',year:1995,description:'Crime drama.',genres:['Crime'],tags:['heist'],offers:[],checkedAt:'2026-09-05T18:00:00.000Z'}];}};
+  const orchestrator=createLiveOrchestrator({hybridRetriever,modelRouter});
+  const result=await orchestrator.search({query:'Best Heist Films',parsedIntent:{kind:'discovery',concepts:['heist'],discoveryTerms:['robbery'],rankingIntent:'best'}});
+  assert.match(result.results[0].searchExplanation,/robbery planning/i);
+});
