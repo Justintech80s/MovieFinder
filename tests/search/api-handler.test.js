@@ -472,7 +472,7 @@ test('default production orchestrator uses configured Postgres full-text candida
       logger:{warn(){}}
     });
     const res=responseRecorder();
-    await searchHandler({method:'GET',query:{q:'movies like Heat with crime themes'},headers:{}},res);
+    await searchHandler({method:'GET',query:{q:'movies like Heat with surveillance themes'},headers:{}},res);
     assert.equal(res.statusCode,200);
     assert.equal(fullTextCalls,1);
     assert.match(res.body.reasoningMode,/^hybrid/);
