@@ -1,16 +1,22 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from .models import Credit
 from .person_search import run_person_search
+from .ml import CinemaML
 
 app = FastAPI(title="MovieFinder Cinema Brain")
+app.state.cinema_ml = CinemaML()
 
 
 class PersonSearchPayload(BaseModel):
     intent: dict
     person: dict
     credits: list[dict]
+
+
+class EmbedQueryPayload(BaseModel):
+    text: str
 
 
 @app.get("/health")
@@ -44,6 +50,25 @@ async def ready():
             "ai": {"status": "configured" if ai_configured else "not_configured"},
         },
     }
+
+
+@app.post("/embed-query")
+async def embed_query(payload: EmbedQueryPayload):
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail={"code": "INVALID_QUERY"})
+    ml = app.state.cinema_ml
+    if not getattr(ml, "available", False):
+        raise HTTPException(status_code=503, detail={"code": "ML_UNAVAILABLE"})
+    vectors = ml.embed_texts([text])
+    vector = vectors[0] if isinstance(vectors, list) and vectors else None
+    if (
+        not isinstance(vector, list)
+        or len(vector) != 384
+        or not all(isinstance(value, (int, float)) for value in vector)
+    ):
+        raise HTTPException(status_code=503, detail={"code": "EMBEDDING_UNAVAILABLE"})
+    return {"embedding": [float(value) for value in vector], "dimensions": 384}
 
 
 @app.post("/person-search")
