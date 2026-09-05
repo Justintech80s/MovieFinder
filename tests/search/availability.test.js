@@ -145,3 +145,49 @@ test('availability freshness expires current offers on a short TTL', () => {
   assert.equal(isAvailabilityFresh('2026-09-04T16:00:00.000Z','2026-09-04T16:05:01.000Z'),false);
   assert.equal(isAvailabilityFresh(null,'2026-09-04T16:05:01.000Z'),false);
 });
+
+
+test('availability verification marks fresh title-specific offers as CONFIRMED', async () => {
+  const { verifyAvailabilityOffers } = await import('../../lib/search/availability.js');
+  const offers=normalizeOffers([
+    {provider:'Netflix',type:'flatrate',url:'https://www.netflix.com/title/70143836'}
+  ],{checkedAt:'2026-09-05T17:40:00.000Z',source:'JustWatch'});
+  const result=verifyAvailabilityOffers(offers,{
+    checkedAt:'2026-09-05T17:40:00.000Z',
+    now:'2026-09-05T17:43:00.000Z'
+  });
+  assert.equal(result.status,'CONFIRMED');
+  assert.equal(result.confirmedOffers.length,1);
+  assert.equal(result.staleOffers.length,0);
+  assert.equal(result.confidence>=0.9,true);
+});
+
+test('availability verification separates stale offers from current confirmed availability', async () => {
+  const { verifyAvailabilityOffers } = await import('../../lib/search/availability.js');
+  const offers=normalizeOffers([
+    {provider:'Max',type:'flatrate',url:'https://play.max.com/movie/example'}
+  ],{checkedAt:'2026-09-05T16:00:00.000Z',source:'JustWatch'});
+  const result=verifyAvailabilityOffers(offers,{
+    checkedAt:'2026-09-05T16:00:00.000Z',
+    now:'2026-09-05T17:00:00.000Z',
+    ttlMs:5*60*1000
+  });
+  assert.equal(result.status,'STALE');
+  assert.equal(result.confirmedOffers.length,0);
+  assert.equal(result.staleOffers.length,1);
+  assert.equal(result.confidence<0.9,true);
+});
+
+test('fresh generic provider links remain UNCERTAIN instead of confirmed', async () => {
+  const { verifyAvailabilityOffers } = await import('../../lib/search/availability.js');
+  const offers=normalizeOffers([
+    {provider:'Netflix',type:'flatrate',url:'https://www.netflix.com/'}
+  ],{checkedAt:'2026-09-05T17:40:00.000Z',source:'JustWatch'});
+  const result=verifyAvailabilityOffers(offers,{
+    checkedAt:'2026-09-05T17:40:00.000Z',
+    now:'2026-09-05T17:42:00.000Z'
+  });
+  assert.equal(result.status,'UNCERTAIN');
+  assert.equal(result.confirmedOffers.length,0);
+  assert.equal(result.uncertainOffers.length,1);
+});
