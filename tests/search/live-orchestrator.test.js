@@ -372,3 +372,81 @@ test('complex live cinema fixture combines graph relationships, current availabi
   assert.equal(result.answer.includes('Three Days of the Condor'), false);
   assert.deepEqual(result.ai, { provider: 'fixture-ai', model: 'fixture-model' });
 });
+
+
+test('live discovery search uses hybrid candidates before deterministic fallback', async () => {
+  let hybridCalls=0;
+  let fallbackCalls=0;
+  const orchestrator=createLiveOrchestrator({
+    hybridRetriever:{
+      async search({query,parsedIntent}){
+        hybridCalls+=1;
+        assert.equal(query,'crime movies like Heat');
+        assert.equal(parsedIntent.kind,'discovery');
+        return [
+          {id:'heat',title:'Heat',year:1995,retrievalSources:['exact','semantic']},
+          {id:'thief',title:'Thief',year:1981,retrievalSources:['semantic']}
+        ];
+      }
+    },
+    lookupAvailability:async movie=>({
+      ...movie,
+      offers:[{provider:'Example Streamer',type:'FLATRATE'}],
+      checkedAt:'2026-09-05T15:00:00.000Z'
+    }),
+    deterministicSearch:async()=>{
+      fallbackCalls+=1;
+      return {parsed:{kind:'discovery'},results:[]};
+    }
+  });
+
+  const result=await orchestrator.search({
+    query:'crime movies like Heat',
+    parsedIntent:{kind:'discovery',concepts:['similarity']}
+  });
+
+  assert.equal(hybridCalls,1);
+  assert.equal(fallbackCalls,0);
+  assert.equal(result.reasoningMode,'hybrid');
+  assert.deepEqual(result.results.map(movie=>movie.id),['heat','thief']);
+  assert.deepEqual(result.results[0].retrievalSources,['exact','semantic']);
+});
+
+test('hybrid retrieval failure falls back to existing deterministic search', async () => {
+  let fallbackCalls=0;
+  const orchestrator=createLiveOrchestrator({
+    hybridRetriever:{async search(){throw new Error('hybrid unavailable');}},
+    deterministicSearch:async()=>{
+      fallbackCalls+=1;
+      return {parsed:{kind:'discovery'},results:[{id:'heat',title:'Heat',year:1995}]};
+    }
+  });
+
+  const result=await orchestrator.search({
+    query:'crime movies',
+    parsedIntent:{kind:'discovery'}
+  });
+
+  assert.equal(fallbackCalls,1);
+  assert.equal(result.reasoningMode,'deterministic');
+  assert.equal(result.results[0].title,'Heat');
+});
+
+test('person filmography keeps its existing deterministic person pipeline instead of hybrid fusion', async () => {
+  let hybridCalls=0;
+  const orchestrator=createLiveOrchestrator({
+    hybridRetriever:{async search(){hybridCalls+=1;return [{id:'wrong',title:'Wrong'}];}},
+    deterministicSearch:async()=>({
+      parsed:{kind:'person-filmography'},
+      results:[{id:'pf',title:'Pulp Fiction',year:1994}]
+    })
+  });
+
+  const result=await orchestrator.search({
+    query:'Quentin Tarantino movies',
+    parsedIntent:{kind:'person-filmography',personName:'Quentin Tarantino'}
+  });
+
+  assert.equal(hybridCalls,0);
+  assert.equal(result.results[0].title,'Pulp Fiction');
+});
