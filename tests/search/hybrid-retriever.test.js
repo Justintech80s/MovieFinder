@@ -40,3 +40,31 @@ test('optional semantic or graph failures do not break exact and full-text retri
   const result=await retriever.search({query:'crime movies',parsedIntent:{}});
   assert.deepEqual(result.map(x=>x.title),['Heat','Thief']);
 });
+
+
+test('discovery retrieval expands concept terms instead of searching only the literal phrase',async()=>{
+  const seen=[];
+  const retriever=createHybridRetriever({
+    fullTextSearch:async ({query})=>{seen.push(query);return query==='robbery'?[{id:'m1',title:'Heat',year:1995}]:[];}
+  });
+  const result=await retriever.search({
+    query:'Best Heist Films',
+    parsedIntent:{kind:'discovery',concepts:['heist'],discoveryTerms:['heist','robbery','caper']}
+  });
+  assert.ok(seen.includes('Best Heist Films'));
+  assert.ok(seen.includes('robbery'));
+  assert.deepEqual(result.map(x=>x.title),['Heat']);
+});
+
+test('discovery query expansion is bounded and deduplicated',async()=>{
+  const seen=[];
+  const retriever=createHybridRetriever({
+    semanticSearch:async ({query})=>{seen.push(query);return [];}
+  });
+  await retriever.search({
+    query:'Car Films',
+    parsedIntent:{kind:'discovery',discoveryTerms:['car','car','cars','racing','street racing','car chase','automotive','getaway driver','extra']}
+  });
+  assert.equal(new Set(seen).size,seen.length);
+  assert.ok(seen.length<=7);
+});
