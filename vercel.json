@@ -6,8 +6,49 @@
     }
   },
   "crons": [
-    {"path":"/api/weekly-report","schedule":"0 12 * * 1"},
-    {"path":"/api/weekly-report","schedule":"0 13 * * 1"},
-    {"path":"/api/weekly-report","schedule":"0 14 * * 1"}
+    {
+      "path": "/api/weekly-report",
+      "schedule": "0 12 * * 1"
+    },
+    {
+      "path": "/api/weekly-report",
+      "schedule": "0 13 * * 1"
+    },
+    {
+      "path": "/api/weekly-report",
+      "schedule": "0 14 * * 1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    }
   ]
 }
