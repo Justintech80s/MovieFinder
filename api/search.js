@@ -6,6 +6,7 @@ import { rankResults } from '../lib/search/rank.js';
 import { runPersonFilmographySearch } from '../lib/search/person-search.js';
 import { matchesHardConstraints } from '../lib/search/constraints.js';
 import { createLiveOrchestrator } from '../lib/search/live-orchestrator.js';
+import { createHybridRetriever } from '../lib/search/hybrid-retriever.js';
 import { createSupabaseLiveGraphStore } from '../lib/search/supabase-live-graph-store.js';
 import { createProductionModelRouter } from '../lib/ai/provider-registry.js';
 import { resolveAnalyticsIdentity } from '../lib/analytics/identity.js';
@@ -95,7 +96,7 @@ function mapNode(n){
     id:n.id,title:c.title,year:c.originalReleaseYear||null,mediaType:n.objectType==='SHOW'?'SHOW':'MOVIE',description:c.shortDescription||'',
     genres:(c.genres||[]).map(g=>g?.shortName).filter(Boolean),poster:poster(c.posterUrl),
     ratings:{imdb:c.scoring?.imdbScore??null,rottenTomatoes:c.scoring?.tomatoMeter??null,imdbVotes:c.scoring?.imdbVotes??null},offers,
-    availabilityScope:n.objectType==='SHOW'?'SERIES':'TITLE',
+    availabilityScope:n.objectType==='SHOW'?'SERIES':'TITLE',checkedAt,
     streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),justwatchUrl:c.fullPath?`https://www.justwatch.com${c.fullPath}`:null
   };
 }
@@ -224,8 +225,15 @@ function buildDefaultLiveOrchestrator({
 }={}){
   const router=modelRouter||createProductionModelRouter({env,models:productionModels(env)});
   const liveGraphStore=graphStore||(typeof graphStoreFactory==='function'?graphStoreFactory({env}):null);
+  const hybridRetriever=createHybridRetriever({
+    exactSearch:async ({query,parsedIntent})=>{
+      const result=await deterministicApplicationSearch({query,parsedIntent});
+      return Array.isArray(result?.results)?result.results:[];
+    }
+  });
   return createLiveOrchestrator({
     graphStore:liveGraphStore,
+    hybridRetriever,
     modelRouter:router,
     deterministicSearch:deterministicApplicationSearch,
     lookupAvailability:(movie,parsedIntent)=>availabilityForCredit(movie,parsedIntent)
