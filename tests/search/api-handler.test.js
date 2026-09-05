@@ -481,3 +481,16 @@ test('default production orchestrator uses configured Postgres full-text candida
     globalThis.fetch=previousFetch;
   }
 });
+
+
+test('live title results expose backend availability verification metadata', async () => {
+  const res=await withCatalog([
+    {node:jwNode({id:'heat',title:'Heat',year:1995,provider:'Max'})}
+  ],'Heat');
+  assert.equal(res.statusCode,200);
+  const movie=res.body.results[0];
+  assert.ok(movie.availabilityVerification);
+  assert.ok(['CONFIRMED','UNCERTAIN'].includes(movie.availabilityVerification.status));
+  assert.equal(typeof movie.availabilityVerification.confidence,'number');
+  assert.ok(movie.availabilityVerification.checkedAt);
+});
