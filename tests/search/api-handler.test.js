@@ -494,3 +494,64 @@ test('live title results expose backend availability verification metadata', asy
   assert.equal(typeof movie.availabilityVerification.confidence,'number');
   assert.ok(movie.availabilityVerification.checkedAt);
 });
+
+
+test('search handler reuses Redis-compatible cached orchestration results', async () => {
+  let orchestratorCalls=0;
+  const store=new Map();
+  const cache={
+    enabled:true,
+    async get(key){return store.get(key)||null;},
+    async setAvailability(key,value,options){store.set(key,value);assert.ok(options.ttlSeconds<=300);return true;}
+  };
+  const searchHandler=createSearchHandler({
+    cache,
+    liveOrchestrator:{
+      async search({parsedIntent}){
+        orchestratorCalls+=1;
+        return {
+          parsed:parsedIntent,
+          results:[{id:'heat',title:'Heat',year:1995,offers:[],checkedAt:'2026-09-05T18:00:00.000Z'}],
+          reasoningMode:'hybrid'
+        };
+      }
+    },
+    analyticsStore:{enabled:false,insertEvent:async()=>false},
+    rateLimiter:{consume:()=>({allowed:true})},
+    logger:{warn(){}}
+  });
+  const first=responseRecorder();
+  await searchHandler({method:'GET',query:{q:'Best Heist Films'},headers:{}},first);
+  const second=responseRecorder();
+  await searchHandler({method:'GET',query:{q:'Best Heist Films'},headers:{}},second);
+  assert.equal(first.statusCode,200);
+  assert.equal(second.statusCode,200);
+  assert.equal(orchestratorCalls,1);
+  assert.deepEqual(second.body.results.map(x=>x.title),['Heat']);
+});
+
+test('search cache failure never breaks live search', async () => {
+  let orchestratorCalls=0;
+  const cache={
+    enabled:true,
+    async get(){throw new Error('cache down');},
+    async setAvailability(){throw new Error('cache down');}
+  };
+  const searchHandler=createSearchHandler({
+    cache,
+    liveOrchestrator:{
+      async search({parsedIntent}){
+        orchestratorCalls+=1;
+        return {parsed:parsedIntent,results:[{id:'x',title:'Thief',offers:[]}]};
+      }
+    },
+    analyticsStore:{enabled:false,insertEvent:async()=>false},
+    rateLimiter:{consume:()=>({allowed:true})},
+    logger:{warn(){}}
+  });
+  const res=responseRecorder();
+  await searchHandler({method:'GET',query:{q:'heist movies'},headers:{}},res);
+  assert.equal(res.statusCode,200);
+  assert.equal(orchestratorCalls,1);
+  assert.equal(res.body.results[0].title,'Thief');
+});
