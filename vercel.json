@@ -17,6 +17,10 @@
     {
       "path": "/api/weekly-report",
       "schedule": "0 14 * * 1"
+    },
+    {
+      "path": "/api/embedding-refresh",
+      "schedule": "17 * * * *"
     }
   ],
   "headers": [
