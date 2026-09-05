@@ -16,6 +16,7 @@ import { buildSearchEvent, recordEventBestEffort } from '../lib/analytics/events
 import { trackMovieOfferUrls } from '../lib/analytics/outbound.js';
 import { applyApiSecurityHeaders, createMemoryRateLimiter, requestClientKey, validateSearchQuery } from '../lib/security/api-security.js';
 import { readRuntimeConfig } from '../lib/config/runtime-config.js';
+import { createRedisCompatibleCache, createCacheKey } from '../lib/cache/redis-cache.js';
 
 const JW='https://apis.justwatch.com/graphql';
 const JUSTWATCH_TIMEOUT_MS=8_000;
@@ -256,6 +257,8 @@ export function createSearchHandler({
   graphStoreFactory=createSupabaseLiveGraphStore,
   hybridSearchFactory=createSupabaseHybridSearch,
   modelRouter=null,
+  cache=undefined,
+  cacheFactory=createRedisCompatibleCache,
   env=process.env,
   now=()=>new Date(),
   logger=console
@@ -272,6 +275,9 @@ export function createSearchHandler({
     windowMs:runtimeConfig?.searchRateWindowMs||60000
   });
   const orchestrator=liveOrchestrator||buildDefaultLiveOrchestrator({graphStore,graphStoreFactory,hybridSearchFactory,modelRouter,env});
+  const searchCache=cache===undefined
+    ? (typeof cacheFactory==='function'?cacheFactory({env}):null)
+    : cache;
 
   return async function handler(req,res){
     let q='';
@@ -317,7 +323,17 @@ export function createSearchHandler({
       parsed=parseIntent(q);
       parsed.concepts=extractCinemaConcepts(q);
 
-      const orchestrated=await orchestrator.search({query:q,parsedIntent:parsed});
+      const cacheKey=createCacheKey('search',[q.toLowerCase(),'US']);
+      let orchestrated=null;
+      if(searchCache?.enabled!==false&&typeof searchCache?.get==='function'){
+        try{orchestrated=await searchCache.get(cacheKey);}catch{}
+      }
+      if(!orchestrated){
+        orchestrated=await orchestrator.search({query:q,parsedIntent:parsed});
+        if(searchCache?.enabled!==false&&typeof searchCache?.setAvailability==='function'){
+          try{await searchCache.setAvailability(cacheKey,orchestrated,{ttlSeconds:120});}catch{}
+        }
+      }
       const resultParsed=orchestrated?.parsed||parsed;
       parsed=resultParsed;
       const results=Array.isArray(orchestrated?.results)?orchestrated.results:[];
