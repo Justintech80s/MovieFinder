@@ -1,5 +1,5 @@
-const CACHE_NAME='moviefinder-shell-v1';
-const SHELL=['/','/manifest.webmanifest','/icons/moviefinder.svg'];
+const CACHE_NAME='moviefinder-shell-v2';
+const SHELL=['/','/manifest.webmanifest','/icons/moviefinder-192.png','/icons/moviefinder-512.png','/icons/moviefinder-maskable-512.png'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)));
