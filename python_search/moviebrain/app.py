@@ -20,6 +20,10 @@ class EmbedQueryPayload(BaseModel):
     text: str
 
 
+class EmbedTextsPayload(BaseModel):
+    texts: list[str]
+
+
 @app.get("/health")
 async def health():
     return {"ok": True, "status": "ok", "service": "moviefinder-python"}
@@ -70,6 +74,35 @@ async def embed_query(payload: EmbedQueryPayload):
     ):
         return JSONResponse(status_code=503, content={"code": "EMBEDDING_UNAVAILABLE"})
     return {"embedding": [float(value) for value in vector], "dimensions": 384}
+
+
+@app.post("/embed-texts")
+async def embed_texts(payload: EmbedTextsPayload):
+    texts = [str(item).strip() for item in payload.texts]
+    if not texts or len(texts) > 64 or any(not item or len(item) > 1200 for item in texts):
+        return JSONResponse(status_code=400, content={"code": "INVALID_BATCH"})
+    ml = app.state.cinema_ml
+    if not getattr(ml, "available", False):
+        return JSONResponse(status_code=503, content={"code": "ML_UNAVAILABLE"})
+    vectors = ml.embed_texts(texts)
+    valid = (
+        isinstance(vectors, list)
+        and len(vectors) == len(texts)
+        and all(
+            isinstance(vector, list)
+            and len(vector) == 384
+            and all(isinstance(value, (int, float)) for value in vector)
+            for vector in vectors
+        )
+    )
+    if not valid:
+        return JSONResponse(status_code=503, content={"code": "EMBEDDING_UNAVAILABLE"})
+    model = getattr(getattr(ml, "config", None), "embedding_model", None)
+    return {
+        "embeddings": [[float(value) for value in vector] for vector in vectors],
+        "dimensions": 384,
+        "model": model,
+    }
 
 
 @app.post("/person-search")

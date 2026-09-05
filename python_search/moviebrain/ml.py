@@ -113,7 +113,27 @@ class CinemaML:
         if pipe is None:
             return []
         try:
-            return pipe(items)
+            raw = pipe(items)
+            pooled = []
+            for item in raw if isinstance(raw, list) else []:
+                if (
+                    isinstance(item, list)
+                    and item
+                    and isinstance(item[0], list)
+                    and item[0]
+                ):
+                    width = len(item[0])
+                    if not all(isinstance(token, list) and len(token) == width for token in item):
+                        return []
+                    pooled.append([
+                        sum(float(token[index]) for token in item) / len(item)
+                        for index in range(width)
+                    ])
+                elif isinstance(item, list) and all(isinstance(value, (int, float)) for value in item):
+                    pooled.append([float(value) for value in item])
+                else:
+                    return []
+            return pooled
         except Exception:
             return []
 
