@@ -92,3 +92,32 @@ def test_embed_query_rejects_wrong_embedding_dimensions(monkeypatch):
     response = client.post("/embed-query", json={"text": "Heat"})
     assert response.status_code == 503
     assert response.json()["code"] == "EMBEDDING_UNAVAILABLE"
+
+
+def test_embed_texts_returns_validated_batch_and_model(monkeypatch):
+    class FakeML:
+        available = True
+        config = type("Config", (), {"embedding_model": "test-embedding-model"})()
+        def embed_texts(self, texts):
+            assert texts == ["Heat (1995)", "Thief (1981)"]
+            return [[0.1] * 384, [0.2] * 384]
+
+    monkeypatch.setattr(app.state, "cinema_ml", FakeML(), raising=False)
+    response = client.post("/embed-texts", json={"texts": ["Heat (1995)", "Thief (1981)"]})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["dimensions"] == 384
+    assert body["model"] == "test-embedding-model"
+    assert len(body["embeddings"]) == 2
+    assert all(len(vector) == 384 for vector in body["embeddings"])
+
+
+def test_embed_texts_rejects_oversized_batches(monkeypatch):
+    class FakeML:
+        available = True
+        config = type("Config", (), {"embedding_model": "test"})()
+
+    monkeypatch.setattr(app.state, "cinema_ml", FakeML(), raising=False)
+    response = client.post("/embed-texts", json={"texts": ["x"] * 65})
+    assert response.status_code == 400
+    assert response.json()["code"] == "INVALID_BATCH"
