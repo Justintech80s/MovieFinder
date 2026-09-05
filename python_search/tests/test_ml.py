@@ -58,3 +58,16 @@ def test_ml_adapter_lazy_load_failure_does_not_break_search():
     assert ml.extract_entities("Martin Scorsese movies") == []
     assert ml.embed_texts(["Heat"]) == []
     assert ml.rerank("crime", [{"title": "Heat"}]) == [{"title": "Heat"}]
+
+
+def test_embed_texts_mean_pools_token_embeddings_into_sentence_vectors():
+    class FakeFeaturePipeline:
+        def __call__(self, items):
+            assert items == ["Heat"]
+            return [[[1.0, 3.0], [3.0, 5.0]]]
+
+    ml = CinemaML(
+        config=read_ml_config({"MOVIEFINDER_ML_ENABLED": "true"}),
+        pipeline_loader=lambda *_args, **_kwargs: FakeFeaturePipeline(),
+    )
+    assert ml.embed_texts(["Heat"]) == [[2.0, 4.0]]
