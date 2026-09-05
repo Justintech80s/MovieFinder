@@ -121,3 +121,26 @@ test('AI structured explanations enrich verified hybrid results without changing
   assert.deepEqual(result.results[0].ai.themes,['professionalism','obsession']);
   assert.equal(result.results[0].year,1995);
 });
+
+
+test('graph discovery results receive the same safe per-result AI explanation enrichment', async () => {
+  const modelRouter={
+    async run(capability){
+      if(capability==='answer_synthesis'){
+        return {provider:'openai',output:{model:'test-model',structuredData:{results:[
+          {id:'movie:conversation',explanation:'The Conversation fits paranoid 1970s cinema through surveillance, institutional distrust, and subjective uncertainty.',themes:['surveillance','paranoia']}
+        ]}}};
+      }
+      return {provider:'openai',output:{model:'test-model',content:'Verified graph reasoning.'}};
+    }
+  };
+  const orchestrator=createLiveOrchestrator({graphStore:graphFixture(),lookupAvailability,modelRouter});
+  const result=await orchestrator.search({
+    query:'best paranoid 1970s films like The Conversation',
+    parsedIntent:{kind:'discovery',similarityAnchor:'movie:conversation',concepts:['paranoid'],rankingIntent:'best'}
+  });
+  assert.equal(result.results[0].title,'The Conversation');
+  assert.match(result.results[0].searchExplanation,/surveillance/i);
+  assert.deepEqual(result.results[0].ai.themes,['surveillance','paranoia']);
+  assert.equal(result.results[0].offers[0].provider,'Max');
+});
