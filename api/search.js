@@ -1,6 +1,6 @@
 import { parseIntent } from '../lib/search/intent.js';
 import { resolvePersonCredits } from '../lib/search/people.js';
-import { normalizeOffers, filterOffers, dedupeOffers } from '../lib/search/availability.js';
+import { normalizeOffers, filterOffers, dedupeOffers, verifyAvailabilityOffers } from '../lib/search/availability.js';
 import { extractCinemaConcepts } from '../lib/search/cinema-graph.js';
 import { rankResults } from '../lib/search/rank.js';
 import { runPersonFilmographySearch } from '../lib/search/person-search.js';
@@ -93,11 +93,12 @@ function mapNode(n){
   const c=n.content||{};
   const checkedAt=new Date().toISOString();
   const offers=dedupeOffers(normalizeOffers((n.offers||[]).map(o=>({provider:o.package?.clearName||o.package?.shortName||o.package?.technicalName,providerLogo:o.package?.icon,type:o.monetizationType,price:o.retailPriceValue??o.retailPrice,currency:o.currency,quality:o.presentationType,url:o.standardWebURL})),{checkedAt,source:'JustWatch'}));
+  const availabilityVerification=verifyAvailabilityOffers(offers,{checkedAt});
   return {
     id:n.id,title:c.title,year:c.originalReleaseYear||null,mediaType:n.objectType==='SHOW'?'SHOW':'MOVIE',description:c.shortDescription||'',
     genres:(c.genres||[]).map(g=>g?.shortName).filter(Boolean),poster:poster(c.posterUrl),
     ratings:{imdb:c.scoring?.imdbScore??null,rottenTomatoes:c.scoring?.tomatoMeter??null,imdbVotes:c.scoring?.imdbVotes??null},offers,
-    availabilityScope:n.objectType==='SHOW'?'SERIES':'TITLE',checkedAt,
+    availabilityScope:n.objectType==='SHOW'?'SERIES':'TITLE',checkedAt,availabilityVerification,
     streamingTimeline:offers.map(o=>o.timeline).filter(Boolean),justwatchUrl:c.fullPath?`https://www.justwatch.com${c.fullPath}`:null
   };
 }
