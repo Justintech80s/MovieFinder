@@ -171,3 +171,23 @@ test('simple recommendation words do not become discovery concepts',()=>{
   assert.deepEqual(p.concepts,['courtroom']);
   assert.deepEqual(p.discoveryTerms,['courtroom']);
 });
+
+
+test('simple discovery keeps provider, decade and free filters separate from the concept',()=>{
+  const p=parseIntent('show me free courtroom movies from the 1990s on Tubi');
+  assert.equal(p.kind,'discovery');
+  assert.ok(p.concepts.includes('courtroom'));
+  assert.equal(p.provider,'Tubi');
+  assert.equal(p.freeOnly,true);
+  assert.equal(p.yearMin,1990);
+  assert.equal(p.yearMax,1999);
+  assert.ok(!p.discoveryTerms.some(term=>/free|1990|tubi/i.test(term)));
+});
+
+test('simple discovery keeps genre filters separate from unknown subject concept',()=>{
+  const p=parseIntent('recommend political corruption thriller movies');
+  assert.equal(p.kind,'discovery');
+  assert.ok(p.concepts.includes('political corruption'));
+  assert.ok(p.genreWords.includes('thriller'));
+  assert.ok(!p.discoveryTerms.includes('thriller'));
+});
