@@ -109,7 +109,7 @@ test('complex anchored query reads bounded persistent graph candidates', async (
     }
   });
 
-  assert.deepEqual(traversalOptions, { maxDepth: 3, maxResults: 40 });
+  assert.deepEqual(traversalOptions, { maxDepth: 3, maxResults: 40, direction: 'both' });
   assert.equal(result.reasoningMode, 'graph');
   assert.deepEqual(result.results.map(movie => movie.title), ['The Conversation', 'The Parallax View']);
   assert.equal(result.evidence.relations.length, 2);
