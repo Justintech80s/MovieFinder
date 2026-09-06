@@ -65,7 +65,7 @@ test('Supabase graph traversal follows incoming collaborator edges to related mo
     const parsed=new URL(url);
     if(parsed.pathname.endsWith('/cinema_entities')&&parsed.searchParams.get('canonical_key')==='eq.movie:a') return {ok:true,json:async()=>[rows.movieA]};
     if(parsed.pathname.endsWith('/cinema_entities')&&parsed.searchParams.get('id')==='in.(db-p)') return {ok:true,json:async()=>[rows.director]};
-    if(parsed.pathname.endsWith('/cinema_entities')&&parsed.searchParams.get('id')==='in.(db-a,db-b)') return {ok:true,json:async()=>[rows.movieA,rows.movieB]};
+    if(parsed.pathname.endsWith('/cinema_entities')&&parsed.searchParams.get('id')==='in.(db-b)') return {ok:true,json:async()=>[rows.movieA,rows.movieB]};
     if(parsed.pathname.endsWith('/cinema_relations')){
       const or=parsed.searchParams.get('or');
       if(or==='(from_entity_id.eq.db-a,to_entity_id.eq.db-a)') return {ok:true,json:async()=>[
@@ -79,7 +79,7 @@ test('Supabase graph traversal follows incoming collaborator edges to related mo
     throw new Error(`unexpected graph request ${url}`);
   };
   const store=createSupabaseLiveGraphStore({fetchImpl,env:{SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'service-key'}});
-  const edges=await store.traverse('movie:a',{maxDepth:2,maxResults:10});
+  const edges=await store.traverse('movie:a',{maxDepth:2,maxResults:10,direction:'both'});
   assert.deepEqual(edges.map(e=>[e.from,e.type,e.to]),[
     ['person:director','DIRECTED','movie:a'],
     ['person:director','DIRECTED','movie:b']
