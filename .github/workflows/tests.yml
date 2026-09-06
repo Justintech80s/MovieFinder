@@ -21,6 +21,8 @@ jobs:
           node-version: 20
       - name: Run Node tests
         run: npm test
+      - name: Run production verification suite
+        run: npm run verify:production
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
