@@ -13,7 +13,7 @@ const queryMatrix=[
   ['all Will Smith movies available on streaming', intent => intent.kind==='person-filmography' && intent.role==='all' && intent.filmographyView==='available'],
   ['comedy TV shows on Hulu', intent => intent.kind==='discovery' && intent.mediaType==='SHOW' && intent.provider==='Hulu'],
   ['free action movies', intent => intent.kind==='discovery' && intent.genreWords.includes('action') && intent.freeOnly],
-  ['movies like Heat', intent => intent.kind==='discovery' && intent.similarityTitle==='Heat'],
+  ['movies like Heat', intent => intent.similarityTitle==='Heat' && intent.mediaType==='MOVIE'],
   ['popular sci-fi films', intent => intent.kind==='discovery' && intent.rankingIntent==='popular' && intent.genreWords.includes('sci-fi')]
 ];
 
