@@ -260,3 +260,26 @@ test('general TV recommendation preserves show media type',()=>{
   assert.equal(p.mediaType,'SHOW');
   assert.equal(p.rankingIntent,'best');
 });
+
+
+test('genre-only movie searches enter discovery mode',()=>{
+  for(const query of ['horror movies','comedy films','action movies','sci-fi films']){
+    const p=parseIntent(query);
+    assert.equal(p.kind,'discovery',query);
+    assert.equal(p.mediaType,'MOVIE',query);
+    assert.ok(p.genreWords.length>=1,query);
+  }
+});
+
+test('genre-only TV searches enter discovery mode',()=>{
+  const p=parseIntent('comedy TV shows');
+  assert.equal(p.kind,'discovery');
+  assert.equal(p.mediaType,'SHOW');
+  assert.deepEqual(p.genreWords,['comedy']);
+});
+
+test('genre title searches are not reclassified when a real title is present',()=>{
+  const p=parseIntent('Horror on Netflix');
+  assert.equal(p.kind,'catalog');
+  assert.equal(p.provider,'Netflix');
+});
