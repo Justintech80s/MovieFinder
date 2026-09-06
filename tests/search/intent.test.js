@@ -225,3 +225,22 @@ test('provider-only TV browsing becomes discovery without affecting title search
   assert.equal(title.kind,'catalog');
   assert.equal(title.provider,'Netflix');
 });
+
+
+test('simple new and recent movie browsing becomes discovery with recency ranking',()=>{
+  for(const query of ['new movies','recent movies','latest films']){
+    const p=parseIntent(query);
+    assert.equal(p.kind,'discovery',query);
+    assert.equal(p.mediaType,'MOVIE',query);
+    assert.equal(p.rankingIntent,'recent',query);
+    assert.deepEqual(p.concepts,[],query);
+  }
+});
+
+test('popular movie browsing becomes discovery with popularity ranking',()=>{
+  const p=parseIntent('popular movies');
+  assert.equal(p.kind,'discovery');
+  assert.equal(p.mediaType,'MOVIE');
+  assert.equal(p.rankingIntent,'popular');
+  assert.deepEqual(p.concepts,[]);
+});
