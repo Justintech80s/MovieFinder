@@ -244,3 +244,19 @@ test('popular movie browsing becomes discovery with popularity ranking',()=>{
   assert.equal(p.rankingIntent,'popular');
   assert.deepEqual(p.concepts,[]);
 });
+
+
+test('general recommendation questions enter discovery mode',()=>{
+  for(const query of ['what should I watch','recommend a movie','give me something to watch','good movies']){
+    const p=parseIntent(query);
+    assert.equal(p.kind,'discovery',query);
+    assert.equal(p.rankingIntent,'best',query);
+  }
+});
+
+test('general TV recommendation preserves show media type',()=>{
+  const p=parseIntent('recommend a TV show');
+  assert.equal(p.kind,'discovery');
+  assert.equal(p.mediaType,'SHOW');
+  assert.equal(p.rankingIntent,'best');
+});
