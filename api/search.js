@@ -154,7 +154,7 @@ async function deterministicApplicationSearch({query='',parsedIntent={}}={}){
   const parsed={...parsedIntent};
 
   if(parsed.kind==='person-filmography'){
-    const personSearch=await runPersonFilmographySearch(parsed,{resolveCredits:resolvePersonCredits,lookupAvailability:credit=>availabilityForCredit(credit,parsed),rank:rankResults,availabilityLimit:60,concurrency:6});
+    const personSearch=await runPersonFilmographySearch(parsed,{resolveCredits:resolvePersonCredits,lookupAvailability:credit=>availabilityForCredit(credit,parsed),rank:rankResults,concurrency:6});
     if(!personSearch.person){
       return {parsed,filmography:[],results:[],availabilitySummary:personSearch.availabilitySummary,dataQuality:{confidence:.2}};
     }
@@ -163,7 +163,9 @@ async function deterministicApplicationSearch({query='',parsedIntent={}}={}){
       filmography:personSearch.filmography,
       results:personSearch.results,
       availabilitySummary:personSearch.availabilitySummary,
-      dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed'}
+      partial:personSearch.partial,
+      failedRoles:personSearch.failedRoles,
+      dataQuality:{confidence:personSearch.results.length?.9:.62,filmographySource:'Wikidata',availabilitySource:'current U.S. availability feed',filmographyComplete:!personSearch.partial}
     };
   }
 
