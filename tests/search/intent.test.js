@@ -283,3 +283,22 @@ test('genre title searches are not reclassified when a real title is present',()
   assert.equal(p.kind,'catalog');
   assert.equal(p.provider,'Netflix');
 });
+
+
+test('compact genre rating and rental price filters enter discovery mode',()=>{
+  const p=parseIntent('Horror RT 90+ rent <$5');
+  assert.equal(p.kind,'discovery');
+  assert.deepEqual(p.genreWords,['horror']);
+  assert.equal(p.rtMin,90);
+  assert.equal(p.rentOnly,true);
+  assert.equal(p.maxPrice,5);
+});
+
+test('parses natural-language rental price ceilings',()=>{
+  for(const query of ['movies to rent under $5','films for rent less than 4.99']){
+    const p=parseIntent(query);
+    assert.equal(p.kind,'discovery',query);
+    assert.equal(p.rentOnly,true,query);
+    assert.ok(p.maxPrice<=5,query);
+  }
+});

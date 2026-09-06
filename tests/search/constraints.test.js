@@ -43,3 +43,11 @@ test('enforces explicit movie versus TV-series media type', () => {
   assert.equal(matchesHardConstraints(movie({mediaType:'MOVIE'}),{mediaType:'SHOW'}),false);
   assert.equal(matchesHardConstraints(movie({mediaType:'SHOW'}),{mediaType:'MOVIE'}),false);
 });
+
+
+test('enforces maximum offer price as a hard constraint', () => {
+  const cheap=movie({offers:[{provider:'Prime Video',type:'RENT',price:3.99,currency:'USD'}]});
+  const expensive=movie({offers:[{provider:'Prime Video',type:'RENT',price:5.99,currency:'USD'}]});
+  assert.equal(matchesHardConstraints(cheap,{rentOnly:true,maxPrice:5}),true);
+  assert.equal(matchesHardConstraints(expensive,{rentOnly:true,maxPrice:5}),false);
+});

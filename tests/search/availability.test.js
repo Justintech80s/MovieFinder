@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeOffers, toTimelineEntry, isAvailabilityFresh } from '../../lib/search/availability.js';
+import { normalizeOffers, toTimelineEntry, isAvailabilityFresh, filterOffers } from '../../lib/search/availability.js';
 
 test('adds frontend-compatible priceLabel for paid and free offers', () => {
   const [rent, free] = normalizeOffers([
@@ -190,4 +190,15 @@ test('fresh generic provider links remain UNCERTAIN instead of confirmed', async
   assert.equal(result.status,'UNCERTAIN');
   assert.equal(result.confirmedOffers.length,0);
   assert.equal(result.uncertainOffers.length,1);
+});
+
+
+test('filters paid offers by requested maximum price', () => {
+  const offers=normalizeOffers([
+    {provider:'Amazon Video',type:'rent',price:3.99,currency:'USD'},
+    {provider:'Apple TV+',type:'rent',price:5.99,currency:'USD'},
+    {provider:'Tubi',type:'free',price:null,currency:'USD'}
+  ]);
+  const filtered=filterOffers(offers,{rentOnly:true,maxPrice:5});
+  assert.deepEqual(filtered.map(o=>o.provider),['Amazon Video']);
 });
