@@ -191,3 +191,37 @@ test('simple discovery keeps genre filters separate from unknown subject concept
   assert.ok(p.genreWords.includes('thriller'));
   assert.ok(!p.discoveryTerms.includes('thriller'));
 });
+
+
+test('provider-only movie browsing becomes discovery instead of literal catalog search',()=>{
+  const p=parseIntent('movies on Netflix');
+  assert.equal(p.kind,'discovery');
+  assert.equal(p.provider,'Netflix');
+  assert.equal(p.mediaType,'MOVIE');
+  assert.deepEqual(p.concepts,[]);
+});
+
+test('free movie browsing becomes discovery',()=>{
+  const p=parseIntent('free movies');
+  assert.equal(p.kind,'discovery');
+  assert.equal(p.freeOnly,true);
+  assert.equal(p.mediaType,'MOVIE');
+});
+
+test('decade-only browsing becomes discovery',()=>{
+  const p=parseIntent('movies from the 1980s');
+  assert.equal(p.kind,'discovery');
+  assert.equal(p.yearMin,1980);
+  assert.equal(p.yearMax,1989);
+});
+
+test('provider-only TV browsing becomes discovery without affecting title searches',()=>{
+  const browse=parseIntent('TV shows on Hulu');
+  assert.equal(browse.kind,'discovery');
+  assert.equal(browse.mediaType,'SHOW');
+  assert.equal(browse.provider,'Hulu');
+
+  const title=parseIntent('Heat on Netflix');
+  assert.equal(title.kind,'catalog');
+  assert.equal(title.provider,'Netflix');
+});
