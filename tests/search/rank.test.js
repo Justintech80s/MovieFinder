@@ -46,3 +46,22 @@ test('cult intent rewards cult-tagged candidates',()=>{
   assert.equal(ranked[0].title,'Cult Pick');
   assert.match(ranked[0].cinemaWhy,/cult signal/);
 });
+
+
+test('recent ranking prefers newer release years',()=>{
+  const ranked=rankResults([
+    movie('Older',{year:2018}),
+    movie('Newer',{year:2025})
+  ],{kind:'discovery',rankingIntent:'recent',concepts:[]});
+  assert.equal(ranked[0].title,'Newer');
+  assert.match(ranked[0].cinemaWhy,/recent release signal/);
+});
+
+test('popular ranking prefers strong audience reach',()=>{
+  const ranked=rankResults([
+    movie('Small',{ratings:{imdb:8.5,rottenTomatoes:95,imdbVotes:12000}}),
+    movie('Popular',{ratings:{imdb:8.0,rottenTomatoes:88,imdbVotes:900000}})
+  ],{kind:'discovery',rankingIntent:'popular',concepts:[]});
+  assert.equal(ranked[0].title,'Popular');
+  assert.match(ranked[0].cinemaWhy,/popularity signal/);
+});
