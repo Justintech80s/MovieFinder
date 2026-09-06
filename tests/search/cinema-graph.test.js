@@ -47,3 +47,19 @@ test('discovery concepts expand heist and car vocabulary for relation scoring',(
   assert.ok(heist.score>0);
   assert.ok(car.score>0);
 });
+
+
+test('graph traversal can follow incoming and outgoing relationships to discover shared collaborators', () => {
+  const graph=createGraphStore();
+  graph.addNode({id:'movie:a',type:'Movie',title:'Movie A'});
+  graph.addNode({id:'person:director',type:'Person',name:'Director'});
+  graph.addNode({id:'movie:b',type:'Movie',title:'Movie B'});
+  graph.addEdge({from:'person:director',to:'movie:a',type:'DIRECTED'});
+  graph.addEdge({from:'person:director',to:'movie:b',type:'DIRECTED'});
+
+  const edges=graph.traverse('movie:a',{maxDepth:2,maxResults:10,direction:'both'});
+  assert.deepEqual(edges.map(e=>[e.from,e.type,e.to]),[
+    ['person:director','DIRECTED','movie:a'],
+    ['person:director','DIRECTED','movie:b']
+  ]);
+});
