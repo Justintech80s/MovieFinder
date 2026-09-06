@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assessSearchQuality, chooseVerifiedResponse } from '../../lib/search/verification-retry.js';
+import { assessSearchQuality, chooseVerifiedResponse, runBoundedVerificationRetry } from '../../lib/search/verification-retry.js';
 
 test('weak discovery results request one bounded retry', () => {
   const quality=assessSearchQuality({
@@ -56,4 +56,41 @@ test('verified retry keeps a stronger first response when fallback is weaker', (
   assert.equal(chosen.results[0].title,'Strong Match');
   assert.equal(chosen.verificationRetry.attempted,true);
   assert.equal(chosen.verificationRetry.used,false);
+});
+
+test('bounded verification retry calls fallback at most once and only for weak results', async () => {
+  let calls=0;
+  const first={
+    parsed:{kind:'discovery'},
+    results:[{id:'m1',title:'Weak Match',retrievalScore:.1,retrievalSources:['semantic']}],
+    reasoningMode:'hybrid'
+  };
+  const result=await runBoundedVerificationRetry({
+    firstResponse:first,
+    parsedIntent:{kind:'discovery'},
+    retrySearch:async()=>{
+      calls+=1;
+      return {parsed:{kind:'discovery'},results:[{id:'m2',title:'Better Match',matchScore:.7}],reasoningMode:'deterministic'};
+    }
+  });
+  assert.equal(calls,1);
+  assert.equal(result.results[0].title,'Better Match');
+  assert.equal(result.verificationRetry.attempted,true);
+});
+
+test('bounded verification retry skips fallback for already strong results', async () => {
+  let calls=0;
+  const first={
+    parsed:{kind:'discovery'},
+    results:[{id:'m1',title:'Strong Match',retrievalScore:.82,retrievalSources:['fulltext','semantic']}],
+    reasoningMode:'hybrid'
+  };
+  const result=await runBoundedVerificationRetry({
+    firstResponse:first,
+    parsedIntent:{kind:'discovery'},
+    retrySearch:async()=>{calls+=1;return {results:[]};}
+  });
+  assert.equal(calls,0);
+  assert.equal(result.results[0].title,'Strong Match');
+  assert.equal(result.verificationRetry.attempted,false);
 });
