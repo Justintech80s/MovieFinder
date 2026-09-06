@@ -17,11 +17,19 @@ import { trackMovieOfferUrls } from '../lib/analytics/outbound.js';
 import { applyApiSecurityHeaders, createMemoryRateLimiter, requestClientKey, validateSearchQuery } from '../lib/security/api-security.js';
 import { readRuntimeConfig } from '../lib/config/runtime-config.js';
 import { createRedisCompatibleCache, createCacheKey } from '../lib/cache/redis-cache.js';
+import { createResilientSource } from '../lib/search/source-resilience.js';
 
 const JW='https://apis.justwatch.com/graphql';
 const JUSTWATCH_TIMEOUT_MS=8_000;
 const JUSTWATCH_CACHE_TTL_MS=5*60*1000;
-const justWatchCache=new Map();
+const justWatchSource=createResilientSource({retries:2,freshTtlMs:JUSTWATCH_CACHE_TTL_MS,staleTtlMs:30*60*1000,maxEntries:200});
+const fetchIds=new WeakMap();
+let fetchIdCounter=0;
+function fetchIdentity(fetchRef){
+  if(typeof fetchRef!=='function') return 'none';
+  if(!fetchIds.has(fetchRef)) fetchIds.set(fetchRef,++fetchIdCounter);
+  return fetchIds.get(fetchRef);
+}
 export const JUSTWATCH_EPISODE_QUERY=`query GetTitleEpisodes($id:ID!,$country:Country!,$language:Language!){node(id:$id){... on Show{seasons{seasonNumber episodes{episodeNumber offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName icon}}}}}}}`;
 
 export const JUSTWATCH_SEASON_QUERY=`query GetTitleSeasons($id:ID!,$country:Country!,$language:Language!){node(id:$id){... on Show{seasons{seasonNumber offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName icon}}}}}}`;
@@ -29,29 +37,42 @@ export const JUSTWATCH_SEASON_QUERY=`query GetTitleSeasons($id:ID!,$country:Coun
 export const JUSTWATCH_QUERY=`query GetSuggestedTitles($country:Country!,$language:Language!,$first:Int!,$search:String!){popularTitles(country:$country,first:$first,filter:{searchQuery:$search}){edges{node{id objectType content(country:$country,language:$language){title shortDescription originalReleaseYear fullPath posterUrl genres{shortName} scoring{imdbScore imdbVotes tomatoMeter}} offers(country:$country,platform:WEB){monetizationType retailPrice(language:$language) retailPriceValue currency presentationType standardWebURL package{clearName shortName technicalName icon}}}}}}`;
 
 async function jwSearch(search,first=60){
-  const cacheKey=`${String(search).trim().toLowerCase()}|${first}`;
-  const cached=justWatchCache.get(cacheKey);
   const fetchRef=globalThis.fetch;
-  if(cached&&cached.fetchRef===fetchRef&&Date.now()-cached.at<JUSTWATCH_CACHE_TTL_MS) return cached.value;
-  const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),JUSTWATCH_TIMEOUT_MS);
+  const cacheKey=`${fetchIdentity(fetchRef)}|${String(search).trim().toLowerCase()}|${first}`;
   try{
-    const r=await fetch(JW,{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({query:JUSTWATCH_QUERY,variables:{country:'US',language:'en',first,search}}),signal:controller.signal});
-    if(!r.ok) throw new Error(`availability source ${r.status}`);
-    const d=await r.json();
-    if(d.errors?.length) throw new Error('availability source GraphQL error');
-    const value=(d.data?.popularTitles?.edges||[]).map(e=>e.node);
-    justWatchCache.set(cacheKey,{at:Date.now(),value,fetchRef});
-    if(justWatchCache.size>100){
-      const oldest=justWatchCache.keys().next().value;
-      justWatchCache.delete(oldest);
-    }
-    return value;
+    return await justWatchSource.get(cacheKey,async()=>{
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),JUSTWATCH_TIMEOUT_MS);
+      try{
+        const r=await fetchRef(JW,{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({query:JUSTWATCH_QUERY,variables:{country:'US',language:'en',first,search}}),signal:controller.signal});
+        if(!r.ok){
+          const error=new Error(`availability source ${r.status}`);
+          error.status=r.status;
+          throw error;
+        }
+        const d=await r.json();
+        if(d.errors?.length){
+          const error=new Error('availability source GraphQL error');
+          error.status=502;
+          throw error;
+        }
+        return (d.data?.popularTitles?.edges||[]).map(e=>e.node);
+      }finally{
+        clearTimeout(timeout);
+      }
+    });
   }catch(error){
-    if(error?.name==='AbortError') throw new Error('availability source timeout');
+    if(error?.name==='AbortError'){
+      const timeoutError=new Error('availability source timeout');
+      timeoutError.status=504;
+      throw timeoutError;
+    }
+    if(!/^availability source\b/i.test(String(error?.message||''))){
+      const wrapped=new Error('availability source unavailable');
+      wrapped.status=Number(error?.status)||503;
+      throw wrapped;
+    }
     throw error;
-  }finally{
-    clearTimeout(timeout);
   }
 }
 
