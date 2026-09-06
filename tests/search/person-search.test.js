@@ -174,3 +174,44 @@ test('person filmography keeps failed constrained availability lookups UNKNOWN i
   assert.deepEqual(result.results.map(x=>x.title),['Film B']);
   assert.equal(result.availabilitySummary.unknown,1);
 });
+
+
+test('available filmography checks every resolved credit by default', async () => {
+  const credits=Array.from({length:75},(_,i)=>({workId:`Q${i+1}`,title:`Film ${i+1}`,year:2000+i%20,role:'cast'}));
+  const resolveCredits=async()=>({
+    person:{id:'QTEST',name:'Prolific Actor',source:'Wikidata'},
+    credits,
+    verified:true
+  });
+  let calls=0;
+  const lookupAvailability=async credit=>{
+    calls+=1;
+    return {id:credit.workId,title:credit.title,year:credit.year,mediaType:'MOVIE',offers:[{provider:'Example',type:'FLATRATE',timeline:{status:'NOW'}}]};
+  };
+
+  const result=await runPersonFilmographySearch(
+    {personName:'Prolific Actor',role:'all',filmographyView:'available'},
+    {resolveCredits,lookupAvailability,rank:items=>items,concurrency:10}
+  );
+
+  assert.equal(calls,75);
+  assert.equal(result.filmography.length,75);
+  assert.equal(result.results.length,75);
+  assert.equal(result.availabilitySummary.unknown,0);
+});
+
+test('person search propagates partial role metadata from the credit resolver', async () => {
+  const resolveCredits=async()=>({
+    person:{id:'Q3772',name:'Quentin Tarantino',source:'Wikidata'},
+    credits:[{workId:'Q1',title:'Pulp Fiction',year:1994,role:'director'}],
+    verified:true,
+    partial:true,
+    failedRoles:['producer']
+  });
+  const result=await runPersonFilmographySearch(
+    {personName:'Quentin Tarantino',role:'all',filmographyView:'complete'},
+    {resolveCredits,lookupAvailability:async()=>null,rank:items=>items}
+  );
+  assert.equal(result.partial,true);
+  assert.deepEqual(result.failedRoles,['producer']);
+});
