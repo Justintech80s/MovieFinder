@@ -20,7 +20,7 @@
     },
     {
       "path": "/api/embedding-refresh",
-      "schedule": "17 * * * *"
+      "schedule": "17 3 * * *"
     }
   ],
   "headers": [
