@@ -4,7 +4,7 @@ const UPSTREAM_TIMEOUT_MS=5000;
 
 const clean=value=>String(value??'').trim();
 const normalizeTitle=value=>clean(value).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-const numberOrNull=value=>Number.isFinite(Number(value))?Number(value):null;
+const numberOrNull=value=>value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
 const round1=value=>Math.round(value*10)/10;
 
 function parseSearch(raw){
